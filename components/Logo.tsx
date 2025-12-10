@@ -5,7 +5,7 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
   return (
     <div className={`flex items-center gap-2 select-none group ${textClassName || 'text-current'}`}>
       {/* 
-         Icon Design: "Linguistic Spark" - Refined
+         Icon Design: "Linguistic Spark" - Refined V2
       */}
       <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-lg transition-transform duration-500 group-hover:scale-105`}>
         <defs>
@@ -40,9 +40,7 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
         {/* 1. Main Background Sphere */}
         <circle cx="64" cy="64" r="60" fill="url(#sphere_gradient)" className="shadow-inner" />
         
-        {/* 2. Orbit Ring: Top-Right to Bottom-Left 
-            rotate(135) rotates the ellipse so its major axis runs from Top-Right (approx 1:30 clock) to Bottom-Left (7:30 clock).
-        */}
+        {/* 2. Orbit Ring: Top-Right to Bottom-Left */}
         <ellipse 
             cx="64" cy="64" rx="56" ry="17" 
             stroke="white" strokeWidth="2" strokeOpacity="0.35" fill="none"
@@ -51,11 +49,11 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
         />
 
         {/* 3. Language Particles */}
-        {/* '文' - Moved slightly Top-Right from original (32, 54) -> (38, 48) */}
+        {/* '文' - Font size reduced to 28 */}
         <text 
             x="38" y="48" 
             fill="#fbbf24" 
-            fontSize="30" 
+            fontSize="28" 
             fontWeight="900" 
             fontFamily="serif" 
             textAnchor="middle" 
@@ -64,11 +62,11 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
             className="drop-shadow-sm"
         >文</text>
         
-        {/* 'A' - Balanced position */}
+        {/* 'A' - Font size reduced to 28 */}
         <text 
             x="94" y="102" 
             fill="#a5f3fc" 
-            fontSize="30" 
+            fontSize="28" 
             fontWeight="900" 
             fontFamily="sans-serif" 
             textAnchor="middle" 
@@ -77,10 +75,10 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
             className="drop-shadow-sm"
         >A</text>
 
-        {/* 4. Central Sparkle (Smaller & Subtle Animation) */}
+        {/* 4. Central Sparkle (Slightly Bigger) */}
         <g className="star-anim">
-            {/* Main 4-point Star: Reduced size (Radius approx 22px, previously ~34px) */}
-            <path d="M 64 42 C 66 58, 70 60, 86 64 C 70 68, 66 70, 64 86 C 62 70, 58 68, 42 64 C 58 60, 62 58, 64 42 Z" fill="white" filter="url(#star_glow)" />
+            {/* Main 4-point Star: Increased size (Tips moved out by ~2px: 42->40, 86->88) */}
+            <path d="M 64 40 C 66 58, 70 60, 88 64 C 70 68, 66 70, 64 88 C 62 70, 58 68, 40 64 C 58 60, 62 58, 64 40 Z" fill="white" filter="url(#star_glow)" />
             
             {/* Tiny satellite dots for texture */}
             <circle cx="84" cy="54" r="1.5" fill="#fcd34d" opacity="0.8" />
