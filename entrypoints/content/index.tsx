@@ -1,5 +1,4 @@
 
-
 import ReactDOM from 'react-dom/client';
 import React, { useState, useEffect, useRef } from 'react';
 import { PageWidget } from '../../components/PageWidget';
@@ -466,7 +465,7 @@ export default defineContentScript({
             // --- Phase 1: Standard Fuzzy Match ---
             const primaryMatches = findFuzzyMatches(sent, currentEntries, trans);
             // Track matched TEXTS to avoid triggering aggressive mode for the same word (even if ID differs)
-            const matchedTexts = new Set(primaryMatches.map(m => m.entry.text.toLowerCase()));
+            // const matchedTexts = new Set(primaryMatches.map(m => m.entry.text.toLowerCase()));
 
             primaryMatches.forEach(m => {
                 let localPos = sent.indexOf(m.text);
@@ -482,33 +481,32 @@ export default defineContentScript({
 
             // --- Phase 2: Aggressive Match (Experimental) ---
             if (currentAutoTranslate.aggressiveMode) {
-                // Identify candidates that exist in translation but NOT in matched texts
+                // Identify candidates that exist in translation
+                // Note: removed `matchedTexts` check to allow matching multiple occurrences of the same word (e.g. China twice in different contexts)
                 const normTrans = normalizeEnglishText(trans);
-                const missedCandidates = currentEntries.filter(e => {
-                    if (matchedTexts.has(e.text.toLowerCase())) return false; // Already matched by text
-                    // Check if it appears in translation
+                const candidatesInTrans = currentEntries.filter(e => {
                     const inTrans = normTrans.includes(e.text.toLowerCase()) || 
                                     (e.inflections && e.inflections.some(inf => normTrans.includes(inf.toLowerCase())));
                     return inTrans;
                 });
 
-                if (missedCandidates.length > 0) {
+                if (candidatesInTrans.length > 0) {
                     // Deduplicate missed candidates by text to reduce API calls
                     const uniqueMap = new Map<string, WordEntry>();
-                    missedCandidates.forEach(c => uniqueMap.set(c.text, c));
-                    const uniqueMissed = Array.from(uniqueMap.values());
+                    candidatesInTrans.forEach(c => uniqueMap.set(c.text, c));
+                    const uniqueCandidates = Array.from(uniqueMap.values());
                     
-                    for (const missed of uniqueMissed) {
+                    for (const candidate of uniqueCandidates) {
                         try {
                             // Call API to get rich definitions (real-time lookup)
                             const response = await browser.runtime.sendMessage({
                                 action: 'LOOKUP_WORD_RICH',
-                                text: missed.text
+                                text: candidate.text
                             }) as any;
 
                             if (response && response.success && response.data) {
                                 // Perform Aggressive Matching with new definitions on the sentence
-                                const aggMatches = findAggressiveMatches(sent, missed, response.data);
+                                const aggMatches = findAggressiveMatches(sent, candidate, response.data);
                                 
                                 aggMatches.forEach(m => {
                                     let localPos = sent.indexOf(m.text);
@@ -523,7 +521,7 @@ export default defineContentScript({
                                 });
                             }
                         } catch (e) {
-                            console.warn("Aggressive lookup failed for", missed.text, e);
+                            console.warn("Aggressive lookup failed for", candidate.text, e);
                         }
                     }
                 }

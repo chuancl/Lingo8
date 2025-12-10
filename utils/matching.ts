@@ -3,7 +3,7 @@ import { WordEntry, RichDictionaryResult } from "../types";
 import { normalizeEnglishText } from "./text-processing";
 
 // 常见中文停用词/助词，在计算相似度时应忽略
-const CHINESE_STOP_WORDS = new Set(['的', '了', '和', '是', '在', '之', '与', '或', '等', '及']);
+const CHINESE_STOP_WORDS = new Set(['的', '了', '和', '是', '在', '之', '与', '或', '等', '及', '其', '这', '那', '个']);
 
 // Helper: Calculate Dice Coefficient with Stop Word Filtering
 const calculateSimilarity = (segment: string, definition: string): number => {
@@ -168,6 +168,11 @@ export const findAggressiveMatches = (
     // Single segments
     candidates.push(...segments.filter(s => /[\u4e00-\u9fa5]/.test(s)));
     
+    // ALSO add individual characters as candidates to catch "中" in "中印"
+    // even if Segmenter groups them.
+    const chars = sourceText.split('').filter(s => /[\u4e00-\u9fa5]/.test(s) && !CHINESE_STOP_WORDS.has(s));
+    candidates.push(...chars);
+    
     // Double segments (bi-grams)
     for(let i=0; i<segments.length-1; i++) {
         candidates.push(segments[i] + segments[i+1]);
@@ -177,21 +182,23 @@ export const findAggressiveMatches = (
         candidates.push(segments[i] + segments[i+1] + segments[i+2]);
     }
 
+    // Deduplicate candidates
+    const uniqueCandidates = Array.from(new Set(candidates));
+
     let bestMatchText = "";
     let bestScore = 0;
     
     // 3. Similarity Check
-    // Threshold Increased to 0.6 (60%) to avoid false positives like "期间的" vs "中国的" (shared "的" = 33%)
+    // Threshold 0.6 (60%) 
+    // "中"(1) vs "中国"(2) -> Intersection 1. Dice = 2*1/3 = 0.66 > 0.6. Matches.
     const THRESHOLD = 0.6;
 
-    for (const cand of candidates) {
-        // Skip single chars for safety in aggressive mode
-        if (cand.length < 2) continue;
-
+    for (const cand of uniqueCandidates) {
         for (const def of definitions) {
             const score = calculateSimilarity(cand, def);
             if (score >= THRESHOLD) {
-                if (score > bestScore || (score === bestScore && cand.length > bestMatchText.length)) {
+                // Prefer longer match, then higher score
+                if (cand.length > bestMatchText.length || (cand.length === bestMatchText.length && score > bestScore)) {
                     bestScore = score;
                     bestMatchText = cand;
                 }
