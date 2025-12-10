@@ -1,6 +1,4 @@
 
-
-
 import React, { useState } from 'react';
 import { TranslationEngine, WordEntry, StyleConfig, WordCategory, OriginalTextConfig, AutoTranslateConfig } from '../../types';
 import { RefreshCw, Play, AlertCircle, Zap, SplitSquareHorizontal } from 'lucide-react';
@@ -49,26 +47,11 @@ export const PreviewSection: React.FC<PreviewSectionProps> = ({ engines, entries
                 return;
             }
 
-            // STEP 2: Verification (Context Check with Inflections)
-            const verifiedEntries = entries.filter(e => {
-                const engWord = e.text.toLowerCase();
-                const targetText = apiResult.toLowerCase();
-                
-                // Direct match
-                if (targetText.includes(engWord)) return true;
+            // STEP 2: Fuzzy Matching with Context Verification
+            // Note: findFuzzyMatches v2 takes the translated text as the 3rd argument
+            const finalMatches = findFuzzyMatches(inputText, entries, apiResult);
 
-                // Inflection match
-                if (autoTranslateConfig.matchInflections && e.inflections) {
-                    return e.inflections.some(infl => targetText.includes(infl.toLowerCase()));
-                }
-
-                return false;
-            });
-
-            // STEP 3: Chinese Alignment & Fuzzy Matching (Using Shared Logic)
-            const finalMatches = findFuzzyMatches(inputText, verifiedEntries);
-
-            // STEP 4: Render Mixed Text
+            // STEP 3: Render Mixed Text
             const sortedEntries = finalMatches.sort((a, b) => b.text.length - a.text.length);
             
             let mixedContent: React.ReactNode;
@@ -145,7 +128,7 @@ export const PreviewSection: React.FC<PreviewSectionProps> = ({ engines, entries
                         </div>
                     </div>
                     <p className="text-xs text-slate-400 flex items-center">
-                        <Zap className="w-3 h-3 mr-1"/> 提示: 只有当 API 译文中出现了词库里的英文词（或其变形），才会执行替换。
+                        <Zap className="w-3 h-3 mr-1"/> 提示: 系统会自动使用已配置的翻译引擎进行翻译，并校验译文是否包含目标词。
                     </p>
                 </div>
 

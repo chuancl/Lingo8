@@ -1,5 +1,4 @@
 
-
 import ReactDOM from 'react-dom/client';
 import React, { useState, useEffect, useRef } from 'react';
 import { PageWidget } from '../../components/PageWidget';
@@ -13,6 +12,7 @@ import { findFuzzyMatches } from '../../utils/matching';
 import { buildReplacementHtml } from '../../utils/dom-builder';
 import { browser } from 'wxt/browser';
 import { preloadVoices, unlockAudio } from '../../utils/audio';
+import { splitTextIntoSentences } from '../../utils/text-processing';
 
 // --- Overlay App Component (Manages Widget & Bubbles) ---
 interface ContentOverlayProps {
@@ -296,15 +296,6 @@ const ContentOverlay: React.FC<ContentOverlayProps> = ({
                    break;
                }
           }
-          
-          // Sentence Translation Strategy
-          // Since we cache full paragraph translation, we can't reliably extract specific sentence translation.
-          // We'll fallback to using the whole paragraph translation if sentence-level isn't available, 
-          // or leave it empty if we want to be strict.
-          // For now, let's leave contextSentenceTranslation empty unless we can align, 
-          // OR user can edit it later in Anki. 
-          // But requirement says "Original Sentence translated via API".
-          // If the API translated the whole paragraph, we have the paragraph.
       }
 
       // 2. Video Timestamp
@@ -362,11 +353,8 @@ const ContentOverlay: React.FC<ContentOverlayProps> = ({
       handleCaptureAndAdd(id, bubble?.triggerElement);
   };
 
-  // Handler for PageWidget Batch Add
-  // We need to find the elements in the DOM corresponding to the IDs
   const handleBatchAdd = (ids: string[]) => {
       ids.forEach(id => {
-          // Find the first visible occurrence of this word
           const el = document.querySelector(`[data-entry-id="${id}"]`) as HTMLElement;
           handleCaptureAndAdd(id, el);
       });
@@ -434,8 +422,13 @@ export default defineContentScript({
         const text = textNode.nodeValue;
         if (!text) return;
 
+        // Sort by length desc to handle "China"(中国) before "China"(中) if they both exist?
+        // Actually findFuzzyMatches returns processed unique matches.
+        // We still sort by length to be safe for regex construction.
         validMatches.sort((a, b) => b.text.length - a.text.length);
         const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // 关键修复：确保匹配不区分大小写吗？中文不需要。但英文替换需要注意。
         const pattern = new RegExp(`(${validMatches.map(m => escapeRegExp(m.text)).join('|')})`, 'g');
 
         const parts = text.split(pattern);
@@ -447,10 +440,6 @@ export default defineContentScript({
              if (match) {
                  const span = document.createElement('span');
                  span.className = 'context-lingo-word'; 
-                 // Build HTML with data attributes for ID and Original Text
-                 // Note: We inject the HTML string, but React handles attributes via props. 
-                 // Here we are in vanilla DOM territory.
-                 // buildReplacementHtml returns string with data-entry-id and data-original-text
                  span.innerHTML = buildReplacementHtml(
                     match.text, 
                     match.entry.text, 
@@ -460,15 +449,6 @@ export default defineContentScript({
                     match.entry.id
                  );
                  
-                 // IMPORTANT: Move the inner elements out to the span, or keep span as wrapper
-                 // buildReplacementHtml creates a wrapper (span/ruby) with the class. 
-                 // So we should append that HTML directly. 
-                 // Wait, span.className is 'context-lingo-word', but buildReplacementHtml returns a wrapper with class 'context-lingo-wrapper' or 'context-lingo-word' internally?
-                 // Let's check utils/dom-builder.ts. It returns a string.
-                 // Actually, buildReplacementHtml puts data-entry-id on the INNER target span.
-                 // So we need to ensure events bubble or we target the inner element.
-                 
-                 // Simpler: Just parse the HTML string into nodes
                  const tempDiv = document.createElement('div');
                  tempDiv.innerHTML = buildReplacementHtml(
                     match.text, 
@@ -493,13 +473,18 @@ export default defineContentScript({
 
     class TranslationScheduler {
         private buffer: { block: HTMLElement, sourceText: string }[] = [];
-        private requestQueue: { combinedText: string, items: { block: HTMLElement, sourceText: string }[] }[] = [];
+        // Updated Queue to handle sentences
+        private requestQueue: { 
+            combinedText: string, 
+            mappings: { block: HTMLElement, originalSentence: string, index: number }[] 
+        }[] = [];
+        
         private isProcessingQueue = false;
         private timer: ReturnType<typeof setTimeout> | null = null;
-        private delimiter = "\n|||\n";
+        private delimiter = " ||| "; // Sentence delimiter for API
         
-        private maxBatchSize = 30; 
-        private maxCharCount = 3000; 
+        private maxBatchSize = 10; // Reduced batch size because we split into sentences now
+        private maxCharCount = 2000; 
         private rateLimitDelay = 350;
 
         add(block: HTMLElement) {
@@ -514,6 +499,7 @@ export default defineContentScript({
         }
 
         private scheduleFlush() {
+            // Count total chars approximately
             const currentChars = this.buffer.reduce((acc, item) => acc + item.sourceText.length, 0);
             
             if (this.buffer.length >= this.maxBatchSize || currentChars >= this.maxCharCount) {
@@ -531,9 +517,28 @@ export default defineContentScript({
             if (this.timer) { clearTimeout(this.timer); this.timer = null; }
 
             const batchItems = this.buffer.splice(0, this.buffer.length);
-            const combinedText = batchItems.map(b => b.sourceText).join(this.delimiter);
+            
+            // Sentence Splitting Logic Here
+            const allSentences: string[] = [];
+            const mappings: { block: HTMLElement, originalSentence: string, index: number }[] = [];
+            
+            batchItems.forEach(item => {
+                const sentences = splitTextIntoSentences(item.sourceText);
+                sentences.forEach(sent => {
+                    mappings.push({
+                        block: item.block,
+                        originalSentence: sent,
+                        index: allSentences.length
+                    });
+                    allSentences.push(sent);
+                });
+            });
 
-            this.requestQueue.push({ combinedText, items: batchItems });
+            // If combined text is too long, we might need to split this further in real production,
+            // but for now we rely on maxBatchSize controlling the input.
+            const combinedText = allSentences.join(this.delimiter);
+
+            this.requestQueue.push({ combinedText, mappings });
             this.processQueue();
         }
 
@@ -562,58 +567,108 @@ export default defineContentScript({
 
                     if (response.success && response.data.Response?.TargetText) {
                          const fullTranslatedText = response.data.Response.TargetText;
-                         const splitPattern = /\s*\|\|\|\s*/;
-                         const translatedParts = fullTranslatedText.split(splitPattern);
+                         // Split by delimiter (handling potential extra spaces added by translator)
+                         const splitPattern = /\s*\|\|\|\s*/; 
+                         const translatedSentences = fullTranslatedText.split(splitPattern);
     
-                         batchRequest.items.forEach((item, index) => {
-                             const translatedPart = translatedParts[index] || ""; 
-                             this.applyTranslation(item.block, item.sourceText, translatedPart);
+                         // Map back to blocks
+                         // We need to group sentences back by block to apply them efficiently
+                         // or apply per sentence (which might be cleaner for replacement)
+                         
+                         // Current Architecture expects applying to BLOCK.
+                         // But we want to match per SENTENCE.
+                         // So we aggregate translated sentences per block.
+                         
+                         const blockUpdates = new Map<HTMLElement, { sourceSentences: string[], transSentences: string[] }>();
+                         
+                         batchRequest.mappings.forEach((mapItem) => {
+                             const trans = translatedSentences[mapItem.index] || "";
+                             
+                             if (!blockUpdates.has(mapItem.block)) {
+                                 blockUpdates.set(mapItem.block, { sourceSentences: [], transSentences: [] });
+                             }
+                             const data = blockUpdates.get(mapItem.block)!;
+                             data.sourceSentences.push(mapItem.originalSentence);
+                             data.transSentences.push(trans);
                          });
+
+                         // Apply updates per block
+                         blockUpdates.forEach((data, block) => {
+                             this.applyTranslationWithSentences(block, data.sourceSentences, data.transSentences);
+                         });
+
                     } else {
-                        batchRequest.items.forEach(item => item.block.setAttribute('data-context-lingo-scanned', 'error'));
+                        // Error handling: mark all blocks as error
+                        const affectedBlocks = new Set(batchRequest.mappings.map(m => m.block));
+                        affectedBlocks.forEach(b => b.setAttribute('data-context-lingo-scanned', 'error'));
                     }
                 } catch (e) {
-                    batchRequest.items.forEach(item => item.block.setAttribute('data-context-lingo-scanned', 'error'));
+                    const affectedBlocks = new Set(batchRequest.mappings.map(m => m.block));
+                    affectedBlocks.forEach(b => b.setAttribute('data-context-lingo-scanned', 'error'));
                 }
                 await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay));
             }
             this.isProcessingQueue = false;
         }
 
-        private applyTranslation(block: HTMLElement, sourceText: string, translatedText: string) {
-            // CACHE TRANSLATION DATA ON DOM for Context Capture
-            block.setAttribute('data-lingo-source', sourceText);
-            block.setAttribute('data-lingo-translation', translatedText);
+        private applyTranslationWithSentences(block: HTMLElement, sourceSentences: string[], transSentences: string[]) {
+            const fullSource = sourceSentences.join('');
+            const fullTrans = transSentences.join(' '); // English usually space separated
+
+            // Cache full translation for context capture
+            block.setAttribute('data-lingo-source', fullSource);
+            block.setAttribute('data-lingo-translation', fullTrans);
 
             if (currentAutoTranslate.bilingualMode) {
                 if (!block.nextElementSibling?.classList.contains('context-lingo-bilingual-block')) {
                     const transBlock = document.createElement('div');
                     transBlock.className = 'context-lingo-bilingual-block';
-                    transBlock.innerText = translatedText;
+                    transBlock.innerText = fullTrans;
                     block.after(transBlock);
                 }
             }
 
-            const verifiedEntries = currentEntries.filter(entry => {
-                const text = entry.text.toLowerCase();
-                const targetLower = translatedText.toLowerCase();
-                if (targetLower.includes(text)) return true;
-                if (currentAutoTranslate.matchInflections && entry.inflections) {
-                    return entry.inflections.some(infl => targetLower.includes(infl.toLowerCase()));
-                }
-                return false;
-            });
-
-            if (verifiedEntries.length === 0) {
-                block.setAttribute('data-context-lingo-scanned', 'skipped_no_en_match');
-                return;
+            // Perform Fuzzy Match PER SENTENCE to ensure high precision
+            // This relies on the "Context Verification" logic in findFuzzyMatches
+            
+            // 1. Gather all replacement candidates across all sentences
+            const allCandidates: { text: string, entry: WordEntry }[] = [];
+            
+            for (let i = 0; i < sourceSentences.length; i++) {
+                const sSrc = sourceSentences[i];
+                const sTrans = transSentences[i] || "";
+                
+                // Pass the specific SENTENCE translation to the matcher
+                const sentMatches = findFuzzyMatches(sSrc, currentEntries, sTrans);
+                allCandidates.push(...sentMatches);
             }
 
-            const replacementCandidates = findFuzzyMatches(sourceText, verifiedEntries);
+            // Remove duplicates (optional, findFuzzyMatches handles some, but across sentences we might have same word)
+            // But processTextNode handles the splitting by finding these texts.
+            // Since we process the whole block's text nodes, we need a unified list of candidates found in *any* sentence.
+            // Wait, if "中" appears in Sentence 1 (matches) and Sentence 2 (doesn't match),
+            // processTextNode will naively replace ALL "中" in the block.
+            // THIS IS A DOM TRAVERSAL ISSUE.
+            // If we want sentence-level precision replacement, we must limit replacement to the specific text node corresponding to that sentence.
+            // Text nodes don't necessarily align with sentences 1:1.
+            
+            // PRAGMATIC SOLUTION for this Extension:
+            // Since we passed the sentence-level translation to findFuzzyMatches, it only returns a match 
+            // if the translation *context* was valid for that specific sentence.
+            // So if `allCandidates` contains "中", it means at least ONE sentence translated it as China.
+            // Replacing all "中" in the paragraph might be an acceptable trade-off for simplicity vs DOM complexity,
+            // OR we refine `processTextNode` to be context aware (too hard without virtual DOM).
+            
+            // Better: We assume if the word is verified in *any* sentence in this block, it's valid for the block.
+            // (Most blocks are short paragraphs).
+            
+            // Unique candidates
+            const uniqueCandidatesMap = new Map<string, WordEntry>();
+            allCandidates.forEach(c => uniqueCandidatesMap.set(c.text, c.entry));
+            const uniqueCandidates = Array.from(uniqueCandidatesMap.entries()).map(([text, entry]) => ({ text, entry }));
 
-            if (replacementCandidates.length > 0) {
+            if (uniqueCandidates.length > 0) {
                  block.setAttribute('data-context-lingo-scanned', 'true');
-                 
                  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null);
                  const textNodes: Text[] = [];
                  let node;
@@ -622,8 +677,8 @@ export default defineContentScript({
                  textNodes.forEach(tn => {
                      if (tn.parentElement?.closest('.context-lingo-wrapper')) return;
                      if (tn.parentElement?.closest('.context-lingo-word')) return;
-                     if (tn.parentElement?.closest('.context-lingo-target')) return; // Check inner spans too
-                     processTextNode(tn, replacementCandidates);
+                     if (tn.parentElement?.closest('.context-lingo-target')) return;
+                     processTextNode(tn, uniqueCandidates);
                  });
             } else {
                  block.setAttribute('data-context-lingo-scanned', 'skipped_fuzzy_fail');
