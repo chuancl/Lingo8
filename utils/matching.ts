@@ -2,28 +2,40 @@
 import { WordEntry, RichDictionaryResult } from "../types";
 import { normalizeEnglishText } from "./text-processing";
 
-// Helper: Calculate Dice Coefficient
+// 常见中文停用词/助词，在计算相似度时应忽略
+const CHINESE_STOP_WORDS = new Set(['的', '了', '和', '是', '在', '之', '与', '或', '等', '及']);
+
+// Helper: Calculate Dice Coefficient with Stop Word Filtering
 const calculateSimilarity = (segment: string, definition: string): number => {
     if (!segment || !definition) return 0;
     
-    // 1. Exact match
+    // 1. Exact match (High priority)
     if (segment === definition) return 1.0;
 
-    // 2. Single char safety
-    if (segment.length === 1 || definition.length === 1) {
-        return segment === definition ? 1.0 : 0;
+    // 2. Filter Stop Words for meaningful comparison
+    const filterText = (text: string) => text.split('').filter(c => !CHINESE_STOP_WORDS.has(c)).join('');
+    
+    const cleanSeg = filterText(segment);
+    const cleanDef = filterText(definition);
+
+    // If text becomes empty after filtering (e.g. comparison was just "的"), return 0
+    if (!cleanSeg || !cleanDef) return 0;
+
+    // 3. Single char safety after cleaning
+    if (cleanSeg.length === 1 || cleanDef.length === 1) {
+        return cleanSeg === cleanDef ? 1.0 : 0;
     }
 
-    // 3. Dice Coefficient
-    const segChars = new Set(segment.split(''));
-    const defChars = new Set(definition.split(''));
+    // 4. Dice Coefficient
+    const segChars = new Set(cleanSeg.split(''));
+    const defChars = new Set(cleanDef.split(''));
     
     let intersectionCount = 0;
     segChars.forEach(char => {
         if (defChars.has(char)) intersectionCount++;
     });
 
-    return (2.0 * intersectionCount) / (segment.length + definition.length);
+    return (2.0 * intersectionCount) / (cleanSeg.length + cleanDef.length);
 };
 
 /**
@@ -135,6 +147,10 @@ export const findAggressiveMatches = (
     richData.synonyms?.forEach(s => {
         if(s.trans) s.trans.split(/[,;，；]/).forEach(d => allDefinitions.add(d.trim()));
     });
+    // Also include Phrases translations (e.g. "of China" -> "中国的")
+    richData.phrases?.forEach(p => {
+        if(p.trans) p.trans.split(/[,;，；]/).forEach(d => allDefinitions.add(d.trim()));
+    });
 
     const definitions = Array.from(allDefinitions).filter(d => d.length > 0 && /[\u4e00-\u9fa5]/.test(d));
     if (definitions.length === 0) return [];
@@ -165,8 +181,8 @@ export const findAggressiveMatches = (
     let bestScore = 0;
     
     // 3. Similarity Check
-    // Threshold: 0.3 (30%)
-    const THRESHOLD = 0.3;
+    // Threshold Increased to 0.6 (60%) to avoid false positives like "期间的" vs "中国的" (shared "的" = 33%)
+    const THRESHOLD = 0.6;
 
     for (const cand of candidates) {
         // Skip single chars for safety in aggressive mode

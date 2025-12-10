@@ -1,4 +1,5 @@
 
+
 import ReactDOM from 'react-dom/client';
 import React, { useState, useEffect, useRef } from 'react';
 import { PageWidget } from '../../components/PageWidget';
@@ -464,7 +465,8 @@ export default defineContentScript({
 
             // --- Phase 1: Standard Fuzzy Match ---
             const primaryMatches = findFuzzyMatches(sent, currentEntries, trans);
-            const matchedEntryIds = new Set(primaryMatches.map(m => m.entry.id));
+            // Track matched TEXTS to avoid triggering aggressive mode for the same word (even if ID differs)
+            const matchedTexts = new Set(primaryMatches.map(m => m.entry.text.toLowerCase()));
 
             primaryMatches.forEach(m => {
                 let localPos = sent.indexOf(m.text);
@@ -480,10 +482,10 @@ export default defineContentScript({
 
             // --- Phase 2: Aggressive Match (Experimental) ---
             if (currentAutoTranslate.aggressiveMode) {
-                // Identify candidates that exist in translation but NOT in matched entries
+                // Identify candidates that exist in translation but NOT in matched texts
                 const normTrans = normalizeEnglishText(trans);
                 const missedCandidates = currentEntries.filter(e => {
-                    if (matchedEntryIds.has(e.id)) return false; // Already matched
+                    if (matchedTexts.has(e.text.toLowerCase())) return false; // Already matched by text
                     // Check if it appears in translation
                     const inTrans = normTrans.includes(e.text.toLowerCase()) || 
                                     (e.inflections && e.inflections.some(inf => normTrans.includes(inf.toLowerCase())));
@@ -491,20 +493,21 @@ export default defineContentScript({
                 });
 
                 if (missedCandidates.length > 0) {
-                    // console.log("Aggressive Mode: Missed candidates in sentence:", missedCandidates.map(c => c.text));
+                    // Deduplicate missed candidates by text to reduce API calls
+                    const uniqueMap = new Map<string, WordEntry>();
+                    missedCandidates.forEach(c => uniqueMap.set(c.text, c));
+                    const uniqueMissed = Array.from(uniqueMap.values());
                     
-                    for (const missed of missedCandidates) {
+                    for (const missed of uniqueMissed) {
                         try {
                             // Call API to get rich definitions (real-time lookup)
                             const response = await browser.runtime.sendMessage({
                                 action: 'LOOKUP_WORD_RICH',
                                 text: missed.text
-                            });
+                            }) as any;
 
                             if (response && response.success && response.data) {
                                 // Perform Aggressive Matching with new definitions on the sentence
-                                // Note: We should ideally exclude ranges already covered by primary matches,
-                                // but for simplicity, we let the overlap filter handle it later.
                                 const aggMatches = findAggressiveMatches(sent, missed, response.data);
                                 
                                 aggMatches.forEach(m => {
