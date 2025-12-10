@@ -91,10 +91,10 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
             {/* 
                ReWord Logo Art Composition
                Scaled down from original 1200x320 canvas to fit sidebar
-               Adjusted vertical alignment: moved down to align visual center with icon.
+               Adjusted vertical alignment: moved up significantly (-translate-y-[65%]) to match icon center.
             */}
             <div 
-                className="absolute left-0 top-1/2 -translate-y-[40%] origin-left pointer-events-none whitespace-nowrap"
+                className="absolute left-0 top-1/2 -translate-y-[65%] origin-left pointer-events-none whitespace-nowrap"
                 style={{ width: '1200px', height: '320px', transform: 'scale(0.11)' }}
             >
                 {/* 1. R (Base) */}
