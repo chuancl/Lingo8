@@ -8,8 +8,6 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
          Icon Design: "Linguistic Spark"
          - Base: Blue Gradient Sphere
          - Center: Sparkles/Stars
-         - Motion: Cycling/Orbiting lines
-         - Context: '文' (Top-Left) and 'A' (Bottom-Right)
       */}
       <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-md transition-transform duration-500 group-hover:scale-105`}>
         <defs>
@@ -58,30 +56,36 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
       </svg>
       
       {withText && (
-        <div className="relative h-10 w-[100px] ml-1">
+        <div className="flex items-baseline tracking-tight relative ml-1">
             {/* 
-               Design: "Galaxy Core"
-               Center: 道 (Dao) - The Core
-               Orbitals: Re/Word (English Axis) + 易/语 (Chinese Axis)
+               Design: "Linguistic Ornament"
+               Base: ReWord
+               Ornaments: 易 (Top-Left), 道 (Top-Center over 'or'), 语 (Bottom-Right)
             */}
 
-            {/* Top Left: 易 (Yi) - Change */}
-            <span className="absolute top-[-3px] left-[2px] font-serif font-medium text-blue-200 text-xs drop-shadow-sm">易</span>
+            {/* Part 1: Re + 易 */}
+            <div className="relative mr-[1px]">
+                <span className="font-sans font-bold text-slate-200 text-xl">Re</span>
+                {/* 易: Rose Color, Top Left hanging */}
+                <span className="absolute -top-1.5 -left-1.5 font-serif text-[10px] font-bold text-rose-400 drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)] transform -rotate-12">易</span>
+            </div>
 
-            {/* Top Right: Word - Target */}
-            <span className="absolute top-[-5px] right-0 font-sans font-extrabold text-blue-400 text-xl tracking-tight leading-none drop-shadow-sm">Word</span>
+            {/* Part 2: W */}
+            <span className="font-sans font-extrabold text-white text-xl">W</span>
 
-            {/* Center: 道 (Dao) - The Path/Method - Core Pivot */}
-            {/* Increased size and brightness for visibility on dark backgrounds */}
-            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-serif font-bold text-white text-lg z-10 drop-shadow-md">
-                道
-            </span>
+            {/* Part 3: or + 道 */}
+            <div className="relative inline-flex flex-col items-center mx-[1px]">
+                {/* 道: Amber/Gold Color, Crown position */}
+                <span className="absolute -top-[14px] font-serif text-[11px] font-bold text-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] z-10 animate-in fade-in zoom-in duration-500">道</span>
+                <span className="font-sans font-extrabold text-white text-xl">or</span>
+            </div>
 
-            {/* Bottom Left: Re - Source/Again */}
-            <span className="absolute bottom-[-5px] left-0 font-sans font-bold text-slate-100 text-xl tracking-tight leading-none drop-shadow-sm">Re</span>
-
-            {/* Bottom Right: 语 (Yu) - Language */}
-            <span className="absolute bottom-[-1px] right-[2px] font-serif font-medium text-blue-200 text-xs drop-shadow-sm">语</span>
+            {/* Part 4: d + 语 */}
+            <div className="relative">
+                <span className="font-sans font-extrabold text-white text-xl">d</span>
+                {/* 语: Cyan/Blue Color, Bottom Right footing */}
+                <span className="absolute -bottom-1.5 -right-2 font-serif text-[10px] font-bold text-cyan-400 drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)] transform rotate-6">语</span>
+            </div>
         </div>
       )}
     </div>
