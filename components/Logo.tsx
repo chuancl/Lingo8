@@ -58,25 +58,23 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
       </svg>
       
       {withText && (
-        <div className="flex flex-col justify-center gap-0.5">
-            {/* English Title: ReWord */}
-            <h1 className="text-2xl font-sans tracking-tight leading-none flex items-center">
-              <span className="font-bold opacity-90">Re</span>
-              <span className="font-extrabold text-blue-500">Word</span>
-            </h1>
-            
+        <div className="flex flex-col justify-center ml-1">
             {/* 
-               Chinese Subtitle: "Fusion" Style 
-               - Uses `justify-between` to match width of English text.
-               - Uses a gradient text fill (from 'currentColor' to 'blue-500') 
-                 to simulate the transition from Source Language to Target Language.
+               Deconstructed Layout:
+               Row 1: [易] [Word]
+               Row 2: [Re] [语道]
             */}
-            <div className="flex justify-between items-center text-[10px] font-bold tracking-widest uppercase w-full bg-gradient-to-r from-current via-blue-400 to-blue-600 bg-clip-text text-transparent opacity-90">
-              <span>易</span>
-              <span className="opacity-60">·</span>
-              <span>语</span>
-              <span className="opacity-60">·</span>
-              <span>道</span>
+            
+            {/* Top Row: "Yi" (Serif, Muted) + "Word" (Sans, Brand Blue) */}
+            <div className="flex items-baseline justify-end gap-1.5 leading-none translate-y-[2px]">
+                <span className="font-serif font-medium text-slate-400 text-[11px] transform -translate-y-[1px]">易</span>
+                <span className="font-sans font-extrabold text-blue-500 text-xl tracking-tight">Word</span>
+            </div>
+
+            {/* Bottom Row: "Re" (Sans, Dark Slate) + "Yu Dao" (Serif, Light Blue) */}
+            <div className="flex items-baseline justify-start gap-1 leading-none -translate-y-[2px]">
+                <span className="font-sans font-bold text-slate-600 text-lg tracking-tight">Re</span>
+                <span className="font-serif font-medium text-blue-400 text-[11px] tracking-[0.3em] transform -translate-y-[1px]">语道</span>
             </div>
         </div>
       )}
