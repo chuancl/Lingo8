@@ -18,51 +18,42 @@ export const FloatingBall: React.FC<FloatingBallProps> = ({ config, badgeCount, 
             style={{ 
                 left: config.x, 
                 top: config.y,
-                // Ensure clicks don't fire if dragging just finished
                 pointerEvents: 'auto'
             }}
             onMouseDown={onMouseDown}
             onClick={(e) => {
-                // Simple prevent default to stop page interaction
                 if (!isDragging) onClick(e);
             }}
         >
-            {/* 
-               Outer Container
-            */}
             <div className={`relative transition-transform duration-300 ease-out ${isDragging ? 'scale-95 cursor-grabbing' : 'hover:scale-110'}`}>
                 
-                {/* Breathing Glow Background */}
-                <div className="absolute inset-0 rounded-full bg-indigo-500 blur-md opacity-40 animate-pulse"></div>
+                {/* 
+                   Style: "White Porcelain with Gradient Ring" 
+                   Cleaner, lighter, fits on any website background.
+                */}
+                
+                {/* 1. The Ring (Gradient Background) */}
+                <div className="absolute inset-[-3px] rounded-full bg-gradient-to-br from-sky-400 to-emerald-400 opacity-80 blur-[2px]"></div>
 
-                {/* Main Orb - Aurora Solid Gradient (Matching New Logo) */}
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 via-fuchsia-500 to-orange-500 shadow-[0_8px_20px_-4px_rgba(99,102,241,0.5)] border border-white/20 flex items-center justify-center relative overflow-hidden backdrop-blur-md">
+                {/* 2. Main Orb (Clean White) */}
+                <div className="w-14 h-14 rounded-full bg-white shadow-lg flex items-center justify-center relative z-10 border border-slate-100">
                     
-                    {/* Glossy Reflection Effect (Top) */}
-                    <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/30 to-transparent opacity-80 pointer-events-none rounded-t-full"></div>
-                    
-                    {/* Bottom Glow */}
-                    <div className="absolute bottom-0 w-full h-1/3 bg-gradient-to-t from-orange-400/50 to-transparent opacity-60 pointer-events-none"></div>
-
-                    {/* Animated Background Sheen */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out pointer-events-none"></div>
-
-                    {/* Icon */}
-                    <div className="relative z-10 text-white drop-shadow-sm">
+                    {/* Icon with Gradient Fill (Simulated via text-clip if possible, or just colored text) */}
+                    <div className="text-transparent bg-clip-text bg-gradient-to-br from-sky-500 to-emerald-500">
                         {badgeCount > 0 ? (
-                            <BookOpen className="w-6 h-6 stroke-[2.5px]" />
+                            <BookOpen className="w-7 h-7 stroke-[2.5px] stroke-sky-500 fill-sky-50" />
                         ) : (
-                            <Zap className="w-6 h-6 stroke-[2.5px] fill-white/20" />
+                            <Zap className="w-7 h-7 stroke-[2.5px] stroke-slate-300 fill-slate-50" />
                         )}
                     </div>
                 </div>
 
-                {/* Badge - Positioned OUTSIDE the orb to avoid clipping */}
+                {/* Badge */}
                 {badgeCount > 0 && (
                     <div className="absolute -top-1 -right-1 flex items-center justify-center z-20">
                         <span className="relative flex h-5 min-w-[20px] px-1.5 items-center justify-center">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-40"></span>
-                            <span className="relative inline-flex rounded-full h-5 min-w-[20px] bg-gradient-to-r from-red-500 to-orange-500 border-2 border-white text-[10px] font-bold text-white items-center justify-center shadow-sm leading-none px-1">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-40"></span>
+                            <span className="relative inline-flex rounded-full h-5 min-w-[20px] bg-gradient-to-r from-sky-500 to-emerald-500 border-2 border-white text-[10px] font-bold text-white items-center justify-center shadow-sm leading-none px-1">
                                 {badgeCount > 99 ? '99+' : badgeCount}
                             </span>
                         </span>
