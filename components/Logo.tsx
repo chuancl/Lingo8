@@ -4,49 +4,53 @@ import React from 'react';
 export const Logo: React.FC<{ className?: string, withText?: boolean }> = ({ className = "w-10 h-10", withText = true }) => {
   return (
     <div className="flex items-center gap-3 select-none group">
-      <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-md transition-transform duration-500 group-hover:-rotate-6`}>
+      <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-md transition-transform duration-500 group-hover:-rotate-3`}>
         <defs>
-          <linearGradient id="fresh_gradient" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#38bdf8" />   {/* Sky 400 */}
-            <stop offset="100%" stopColor="#34d399" />  {/* Emerald 400 */}
+          <linearGradient id="brand_gradient" x1="20" y1="20" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#0ea5e9" />   {/* Sky 500 */}
+            <stop offset="100%" stopColor="#10b981" />  {/* Emerald 500 */}
           </linearGradient>
-          <filter id="soft_glow" x="-50%" y="-50%" width="200%" height="200%">
-             <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+             <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+             <feComposite in="coloredBlur" in2="SourceGraphic" operator="out" result="glow"/>
              <feMerge>
-                 <feMergeNode in="coloredBlur"/>
+                 <feMergeNode in="coloredBlur" result="softGlow"/>
                  <feMergeNode in="SourceGraphic"/>
              </feMerge>
           </filter>
         </defs>
         
         {/* 
-           Symbol: Abstract "Flow" / "Infinity" Loop 
-           Represents continuous learning and context switching.
+           Symbol: Stylized "R" 
+           - Vertical bar: Book spine / Stability
+           - Curved arrow leg: "Re-" cycle / Forward motion / Transformation
         */}
         
-        {/* Main Stroke Path */}
+        {/* The Spine (Left Bar) */}
         <path 
-            d="M32 44C32 30.7452 42.7452 20 56 20H72C85.2548 20 96 30.7452 96 44C96 52.8 91.2 60.6 84 65L44 88C36.8 92.4 32 100.2 32 109C32 119.493 40.5066 128 51 128H77C87.4934 128 96 119.493 96 109" 
-            stroke="url(#fresh_gradient)" 
-            strokeWidth="14" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            filter="url(#soft_glow)"
+            d="M42 28 C42 23.58 38.42 20 34 20 C29.58 20 26 23.58 26 28 V100 C26 104.42 29.58 108 34 108 C38.42 108 42 104.42 42 100 V28 Z" 
+            fill="url(#brand_gradient)" 
+            opacity="0.9"
+        />
+
+        {/* The "Re" Curve & Leg (Right Part) */}
+        <path 
+            d="M42 36 H74 C 94 36, 106 48, 106 66 C 106 82, 96 92, 82 94 L 102 114 C 105 117, 104 122, 100 124 C 96 126, 92 124, 90 120 L 66 94 H 48 V 80 H 70 C 84 80, 90 74, 90 66 C 90 56, 84 52, 74 52 H 42 V 36 Z" 
+            fill="url(#brand_gradient)"
         />
         
-        {/* Accent Dot (The 'Idea') */}
-        <circle cx="96" cy="44" r="8" fill="white" />
-        <circle cx="96" cy="44" r="4" fill="#38bdf8" />
+        {/* Accent Sparkle (The Idea) */}
+        <circle cx="106" cy="36" r="6" fill="#38bdf8" className="animate-pulse" />
 
       </svg>
       
       {withText && (
         <div className="flex flex-col justify-center">
             <h1 className="text-xl font-black text-white tracking-tight leading-none font-sans">
-              Lingo<span className="font-light text-sky-300">Flow</span>
+              Re-<span className="text-emerald-300">Word</span>
             </h1>
-            <span className="text-[10px] text-emerald-200/80 font-bold tracking-[0.2em] mt-1 uppercase">
-              Immersion
+            <span className="text-[11px] text-sky-100/90 font-bold tracking-[0.25em] mt-1.5 ml-0.5">
+              易语道
             </span>
         </div>
       )}

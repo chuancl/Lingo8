@@ -4,8 +4,8 @@ import { defineConfig } from 'wxt';
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   manifest: {
-    name: 'LingoFlow - 沉浸式英语',
-    description: '在浏览中文网页时，自动将指定词汇替换为英文，结合上下文沉浸式学习。',
+    name: 'Re-Word (易语道) - 沉浸式英语',
+    description: 'Re-Word (Read Word)：在浏览中文网页时，自动将指定词汇替换为英文，重塑您的词汇记忆，体验沉浸式学习之“道”。',
     version: '3.3.0',
     permissions: ['storage', 'activeTab', 'scripting', 'contextMenus', 'unlimitedStorage'],
     host_permissions: [
@@ -15,7 +15,7 @@ export default defineConfig({
       "https://dict.youdao.com/*"
     ],
     action: {
-      default_title: '打开 LingoFlow 仪表盘'
+      default_title: '打开 Re-Word 设置'
     },
     commands: {
       "translate-page": {
