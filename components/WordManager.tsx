@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { WordCategory, WordEntry, MergeStrategyConfig, WordTab, Scenario } from '../types';
 import { DEFAULT_MERGE_STRATEGY } from '../constants';
-import { Upload, Download, Filter, Settings2, List, Search, Plus, Trash2, CheckSquare, Square, ArrowRight, BookOpen, GraduationCap, CheckCircle, RotateCcw } from 'lucide-react';
+import { Upload, Download, Filter, Settings2, List, Search, Plus, Trash2, CheckSquare, Square, ArrowRight, BookOpen, GraduationCap, CheckCircle, RotateCcw, FileDown } from 'lucide-react';
 import { MergeConfigModal } from './word-manager/MergeConfigModal';
 import { AddWordModal } from './word-manager/AddWordModal';
 import { WordList } from './word-manager/WordList';
@@ -14,13 +14,40 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, 
   return (
     <div className="group relative flex items-center">
       {children}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 whitespace-pre-line text-center">
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 text-xs text-white bg-slate-800 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 whitespace-pre-line text-center shadow-xl leading-relaxed min-w-[120px]">
         {text}
         <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></div>
       </div>
     </div>
   );
 };
+
+// --- Import Template Definition ---
+const IMPORT_TEMPLATE = [
+  {
+    "text": "example",
+    "note": "【模式1：智能查询】仅提供单词，系统将自动调用API补全释义、音标和例句。",
+    "category": "想学习单词"
+  },
+  {
+    "text": "book",
+    "translation": "预订",
+    "note": "【模式2：指定释义】提供 translation 作为提示，系统将优先匹配动词含义。",
+    "category": "正在学单词"
+  },
+  {
+    "skipLookup": true,
+    "text": "serendipity",
+    "translation": "机缘凑巧",
+    "phoneticUs": "/ˌsɛrənˈdɪpɪti/",
+    "partOfSpeech": "n.",
+    "contextSentence": "It was pure serendipity that we met.",
+    "contextSentenceTranslation": "我们相遇纯属机缘巧合。",
+    "tags": ["High Frequency", "Literary"],
+    "note": "【模式3：完全自定义】设置 skipLookup: true，直接导入所有字段，不调用API。",
+    "category": "已掌握单词"
+  }
+];
 
 interface WordManagerProps {
   scenarios: Scenario[];
@@ -115,14 +142,12 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
   }, [scenarios, selectedScenarioId]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
-      // 每次显示 Toast 前，确保之前的已被清理，虽然组件会处理，但这里强制更新 ID 触发 useEffect
       setToast({ id: Date.now(), message, type });
   };
 
   const filteredEntries = useMemo(() => {
     return entries.filter(e => {
       if (activeTab !== 'all') {
-        // Strict matching: Categories are now mutually exclusive
         if (e.category !== activeTab) return false;
       }
       if (selectedScenarioId !== 'all') {
@@ -242,6 +267,19 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
      showToast(`成功导出 ${dataToExport.length} 个单词`, 'success');
   };
 
+  const handleDownloadTemplate = () => {
+      const blob = new Blob([JSON.stringify(IMPORT_TEMPLATE, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'lingoflow_import_template.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('模板已下载', 'success');
+  };
+
   const triggerImport = () => {
      if (fileInputRef.current) fileInputRef.current.click();
   };
@@ -253,31 +291,33 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
      const reader = new FileReader();
      reader.onload = async (event) => {
         const text = event.target?.result as string;
-        let candidates: { text: string, translation?: string }[] = [];
+        let candidates: any[] = [];
+        
         try {
-           const json = JSON.parse(text);
-           if (Array.isArray(json)) {
-               candidates = json.map(item => ({ text: item.text, translation: item.translation || item.preferredTranslation }));
+           candidates = JSON.parse(text);
+           if (!Array.isArray(candidates)) {
+               throw new Error("JSON Root is not an array");
            }
         } catch (err) {
-           const parts = text.split(/[\n,，]+/).filter(p => p.trim());
-           candidates = parts.map(part => {
-               const cleaned = part.trim();
-               const match = cleaned.match(/^([a-zA-Z0-9\-\s]+?)(?:\s+([\u4e00-\u9fa5].*))?$/);
-               if (match) {
-                   return { text: match[1].trim(), translation: match[2]?.trim() };
-               }
-               return { text: cleaned };
-           });
+           showToast("文件格式错误：仅支持符合模板规范的 JSON 文件。", "error");
+           e.target.value = ''; 
+           return;
         }
 
-        const targetCategory = activeTab === 'all' ? WordCategory.WantToLearnWord : activeTab;
-        const engines = await enginesStorage.getValue();
-        const activeEngine = engines.find(e => e.isEnabled);
+        const targetCategoryDefault = activeTab === 'all' ? WordCategory.WantToLearnWord : activeTab;
         
-        if (!activeEngine) {
-            showToast("未启用任何翻译引擎，无法完成智能导入", "error");
-            return;
+        // Engine Check: Only needed if there are candidates without 'skipLookup'
+        const needsEngine = candidates.some(c => !c.skipLookup);
+        let activeEngine = null;
+        
+        if (needsEngine) {
+            const engines = await enginesStorage.getValue();
+            activeEngine = engines.find(e => e.isEnabled);
+            if (!activeEngine) {
+                showToast("检测到需智能查询的词条，但未启用任何翻译引擎，导入已中止。", "error");
+                e.target.value = ''; 
+                return;
+            }
         }
 
         let successCount = 0;
@@ -285,56 +325,106 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
         showToast(`开始处理 ${candidates.length} 个单词，请稍候...`, 'info');
         const newEntriesToAdd: WordEntry[] = [];
 
+        // Helper to check duplicates
+        const isDuplicate = (t: string, trans?: string) => {
+            const existing = entries.some(e => 
+                e.text.toLowerCase() === t.toLowerCase() && 
+                (e.translation?.trim() === trans?.trim())
+            );
+            const inBatch = newEntriesToAdd.some(e => 
+                e.text.toLowerCase() === t.toLowerCase() && 
+                (e.translation?.trim() === trans?.trim())
+            );
+            return existing || inBatch;
+        };
+
         for (const candidate of candidates) {
-            if (!candidate.text) continue;
+            if (!candidate.text || typeof candidate.text !== 'string') {
+                failCount++; 
+                continue;
+            }
+
+            const category = candidate.category || targetCategoryDefault;
+            const scenarioId = selectedScenarioId === 'all' ? '1' : selectedScenarioId;
+
             try {
-                const detailsList = await fetchWordDetails(candidate.text, candidate.translation, activeEngine);
-                for (const details of detailsList) {
-                     if (!details.text) continue;
-                     
-                     // De-duplication Logic: Check BOTH Text AND Translation
-                     // Allows same word with different meanings (e.g. bank/银行 vs bank/河岸)
-                     const isDuplicate = entries.some(e => 
-                         e.text.toLowerCase() === details.text!.toLowerCase() && 
-                         (e.translation?.trim() === details.translation?.trim())
-                     );
-                     
-                     // Also check within the current batch to be added
-                     const isDuplicateInBatch = newEntriesToAdd.some(e => 
-                        e.text.toLowerCase() === details.text!.toLowerCase() && 
-                        (e.translation?.trim() === details.translation?.trim())
-                     );
+                // Mode 1: Skip Lookup (Direct Import)
+                if (candidate.skipLookup) {
+                    if (isDuplicate(candidate.text, candidate.translation)) {
+                        failCount++;
+                        continue;
+                    }
 
-                     if (isDuplicate || isDuplicateInBatch) {
-                         // Skip duplicates
-                         continue;
-                     }
-
-                     newEntriesToAdd.push({
-                        id: `import-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                        text: details.text!,
-                        translation: details.translation || '',
-                        phoneticUs: details.phoneticUs,
-                        phoneticUk: details.phoneticUk,
-                        
-                        partOfSpeech: details.partOfSpeech, // New
-
-                        contextSentence: details.contextSentence,
-                        mixedSentence: details.mixedSentence,
-                        dictionaryExample: details.dictionaryExample,
-                        dictionaryExampleTranslation: details.dictionaryExampleTranslation,
-                        inflections: details.inflections || [], 
-                        tags: details.tags || [],
-                        importance: details.importance || 0,
-                        cocaRank: details.cocaRank || 0,
-                        englishDefinition: details.englishDefinition,
-                        category: targetCategory,
+                    newEntriesToAdd.push({
+                        id: `import-direct-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                        text: candidate.text,
+                        translation: candidate.translation || '',
+                        phoneticUs: candidate.phoneticUs,
+                        phoneticUk: candidate.phoneticUk,
+                        partOfSpeech: candidate.partOfSpeech,
+                        englishDefinition: candidate.englishDefinition,
+                        contextSentence: candidate.contextSentence,
+                        contextSentenceTranslation: candidate.contextSentenceTranslation,
+                        mixedSentence: candidate.mixedSentence,
+                        dictionaryExample: candidate.dictionaryExample,
+                        dictionaryExampleTranslation: candidate.dictionaryExampleTranslation,
+                        inflections: candidate.inflections || [],
+                        tags: candidate.tags || [],
+                        importance: candidate.importance || 0,
+                        cocaRank: candidate.cocaRank || 0,
+                        phrases: candidate.phrases || [],
+                        roots: candidate.roots || [],
+                        synonyms: candidate.synonyms || [],
+                        image: candidate.image,
+                        video: candidate.video,
+                        category,
                         addedAt: Date.now(),
-                        scenarioId: selectedScenarioId === 'all' ? '1' : selectedScenarioId,
-                     });
-                     successCount++;
+                        scenarioId,
+                        sourceUrl: candidate.sourceUrl
+                    });
+                    successCount++;
+                } 
+                // Mode 2: Smart Lookup (Rich Fetch)
+                else if (activeEngine) {
+                    const detailsList = await fetchWordDetails(candidate.text, candidate.translation, activeEngine);
+                    
+                    if (detailsList.length === 0) {
+                        failCount++; // No dictionary data found
+                    }
+
+                    for (const details of detailsList) {
+                         if (!details.text) continue;
+                         if (isDuplicate(details.text, details.translation)) continue;
+
+                         newEntriesToAdd.push({
+                            id: `import-smart-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                            text: details.text!,
+                            translation: details.translation || '',
+                            phoneticUs: details.phoneticUs,
+                            phoneticUk: details.phoneticUk,
+                            
+                            partOfSpeech: details.partOfSpeech, 
+
+                            contextSentence: details.contextSentence,
+                            mixedSentence: details.mixedSentence,
+                            dictionaryExample: details.dictionaryExample,
+                            dictionaryExampleTranslation: details.dictionaryExampleTranslation,
+                            
+                            inflections: details.inflections || [], 
+                            tags: details.tags || [],
+                            importance: details.importance || 0,
+                            cocaRank: details.cocaRank || 0,
+                            englishDefinition: details.englishDefinition,
+                            
+                            category, // User specified or current tab
+                            addedAt: Date.now(),
+                            scenarioId,
+                         });
+                         successCount++;
+                    }
                 }
             } catch (err) {
+                console.error(err);
                 failCount++;
             }
         }
@@ -385,7 +475,7 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
               tags: entryData.tags || [],
               importance: entryData.importance || 0,
               cocaRank: entryData.cocaRank || 0,
-              partOfSpeech: entryData.partOfSpeech, // New
+              partOfSpeech: entryData.partOfSpeech, 
               
               // Public Fields
               phrases: entryData.phrases || [],
@@ -432,7 +522,7 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col relative min-h-[600px]">
-      <input type="file" ref={fileInputRef} className="hidden" accept=".json,.txt" onChange={handleImportFile} />
+      <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleImportFile} />
 
       <Toast toast={toast} onClose={() => setToast(null)} />
 
@@ -581,25 +671,38 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
                             </button>
                         </Tooltip>
 
-                        <Tooltip text="支持 JSON 或 TXT 文件">
-                            <button 
-                                onClick={triggerImport}
-                                className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition"
-                            >
-                            <Upload className="w-4 h-4 mr-2" /> 导入
-                            </button>
-                        </Tooltip>
+                        <div className="flex bg-white rounded-lg border border-slate-200 overflow-hidden divide-x divide-slate-200">
+                            <Tooltip text="下载标准导入模板 (JSON)">
+                                <button 
+                                    onClick={handleDownloadTemplate}
+                                    className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+                                >
+                                <FileDown className="w-4 h-4 mr-2" /> 模板
+                                </button>
+                            </Tooltip>
+                            
+                            <Tooltip text="支持 JSON 格式文件。智能模式下会自动查询释义。">
+                                <button 
+                                    onClick={triggerImport}
+                                    className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 transition"
+                                >
+                                <Upload className="w-4 h-4 mr-2" /> 导入
+                                </button>
+                            </Tooltip>
+                        </div>
                         </>
                     )}
 
-                    <Tooltip text="导出当前列表">
-                        <button 
-                            onClick={handleExport}
-                            className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition"
-                        >
-                        <Download className="w-4 h-4 mr-2" /> 导出
-                        </button>
-                    </Tooltip>
+                    {isAllWordsTab && (
+                        <Tooltip text="导出当前列表">
+                            <button 
+                                onClick={handleExport}
+                                className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition"
+                            >
+                            <Download className="w-4 h-4 mr-2" /> 导出
+                            </button>
+                        </Tooltip>
+                    )}
                   </>
               )}
            </div>
