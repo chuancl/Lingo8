@@ -58,24 +58,30 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
       </svg>
       
       {withText && (
-        <div className="flex flex-col justify-center ml-1">
+        <div className="relative h-10 w-[100px] ml-1">
             {/* 
-               Deconstructed Layout:
-               Row 1: [易] [Word]
-               Row 2: [Re] [语道]
+               Design: "Galaxy Core"
+               Center: 道 (Dao) - The Core
+               Orbitals: Re/Word (English Axis) + 易/语 (Chinese Axis)
             */}
-            
-            {/* Top Row: "Yi" (Serif, Muted) + "Word" (Sans, Brand Blue) */}
-            <div className="flex items-baseline justify-end gap-1.5 leading-none translate-y-[2px]">
-                <span className="font-serif font-medium text-slate-400 text-[11px] transform -translate-y-[1px]">易</span>
-                <span className="font-sans font-extrabold text-blue-500 text-xl tracking-tight">Word</span>
-            </div>
 
-            {/* Bottom Row: "Re" (Sans, Dark Slate) + "Yu Dao" (Serif, Light Blue) */}
-            <div className="flex items-baseline justify-start gap-1 leading-none -translate-y-[2px]">
-                <span className="font-sans font-bold text-slate-600 text-lg tracking-tight">Re</span>
-                <span className="font-serif font-medium text-blue-400 text-[11px] tracking-[0.3em] transform -translate-y-[1px]">语道</span>
-            </div>
+            {/* Top Left: 易 (Yi) - Change */}
+            <span className="absolute top-[-3px] left-[2px] font-serif font-medium text-blue-200 text-xs drop-shadow-sm">易</span>
+
+            {/* Top Right: Word - Target */}
+            <span className="absolute top-[-5px] right-0 font-sans font-extrabold text-blue-400 text-xl tracking-tight leading-none drop-shadow-sm">Word</span>
+
+            {/* Center: 道 (Dao) - The Path/Method - Core Pivot */}
+            {/* Increased size and brightness for visibility on dark backgrounds */}
+            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-serif font-bold text-white text-lg z-10 drop-shadow-md">
+                道
+            </span>
+
+            {/* Bottom Left: Re - Source/Again */}
+            <span className="absolute bottom-[-5px] left-0 font-sans font-bold text-slate-100 text-xl tracking-tight leading-none drop-shadow-sm">Re</span>
+
+            {/* Bottom Right: 语 (Yu) - Language */}
+            <span className="absolute bottom-[-1px] right-[2px] font-serif font-medium text-blue-200 text-xs drop-shadow-sm">语</span>
         </div>
       )}
     </div>
