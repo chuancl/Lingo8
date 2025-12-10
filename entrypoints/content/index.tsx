@@ -8,11 +8,11 @@ import { entriesStorage, pageWidgetConfigStorage, autoTranslateConfigStorage, st
 import { WordEntry, PageWidgetConfig, WordInteractionConfig, WordCategory, AutoTranslateConfig, ModifierKey, StyleConfig, OriginalTextConfig } from '../../types';
 import { defineContentScript } from 'wxt/sandbox';
 import { createShadowRootUi } from 'wxt/client';
-import { findFuzzyMatches } from '../../utils/matching';
+import { findFuzzyMatches, findAggressiveMatches } from '../../utils/matching';
 import { buildReplacementHtml } from '../../utils/dom-builder';
 import { browser } from 'wxt/browser';
 import { preloadVoices, unlockAudio } from '../../utils/audio';
-import { splitTextIntoSentences } from '../../utils/text-processing';
+import { splitTextIntoSentences, normalizeEnglishText } from '../../utils/text-processing';
 
 // --- Overlay App Component (Manages Widget & Bubbles) ---
 interface ContentOverlayProps {
@@ -419,14 +419,10 @@ export default defineContentScript({
     }
 
     /**
-     * Strict Sentence-Scoped Replacement
-     * Replaces `processTextNode` with a layout-aware algorithm.
-     * 1. Maps the block's text nodes to a single coordinate system.
-     * 2. Maps each source sentence to a range in that system.
-     * 3. Executes `findFuzzyMatches` strictly within that sentence's scope.
-     * 4. Applies replacements ONLY to the text nodes falling within that range.
+     * Strict Sentence-Scoped Replacement (UPDATED for Aggressive Mode)
+     * Now async to support API calls for aggressive matching.
      */
-    const applySentenceScopedReplacements = (
+    const applySentenceScopedReplacements = async (
         block: HTMLElement, 
         sourceSentences: string[], 
         transSentences: string[]
@@ -448,29 +444,29 @@ export default defineContentScript({
             fullText += val;
         });
 
-        // 2. Identify Replacements per Sentence
+        // 2. Identify Replacements per Sentence (Primary Pass)
         const replacements: { start: number, end: number, entry: WordEntry }[] = [];
         let searchCursor = 0;
 
-        sourceSentences.forEach((sent, idx) => {
-            // Find where this sentence sits in the full block text
-            // We search from the end of the previous sentence to maintain order
+        // Keep track of which entries are successfully matched in each sentence
+        // to identify "missed" candidates for Aggressive Mode
+        
+        for (let idx = 0; idx < sourceSentences.length; idx++) {
+            const sent = sourceSentences[idx];
+            const trans = transSentences[idx] || "";
+            
             const sentStart = fullText.indexOf(sent, searchCursor);
             if (sentStart === -1) {
-                // If exact match fails (e.g. whitespace diff), we try to skip ahead or just abort this sentence
-                return;
+                continue; 
             }
             const sentEnd = sentStart + sent.length;
-            searchCursor = sentEnd;
+            searchCursor = sentEnd; // Advance cursor
 
-            // CRITICAL: Get matches ONLY for this sentence context
-            const trans = transSentences[idx] || "";
-            const matches = findFuzzyMatches(sent, currentEntries, trans);
-            
-            if (matches.length === 0) return;
+            // --- Phase 1: Standard Fuzzy Match ---
+            const primaryMatches = findFuzzyMatches(sent, currentEntries, trans);
+            const matchedEntryIds = new Set(primaryMatches.map(m => m.entry.id));
 
-            // Map matches (relative to sentence) to global coordinates
-            matches.forEach(m => {
+            primaryMatches.forEach(m => {
                 let localPos = sent.indexOf(m.text);
                 while (localPos !== -1) {
                     replacements.push({
@@ -478,21 +474,66 @@ export default defineContentScript({
                         end: sentStart + localPos + m.text.length,
                         entry: m.entry
                     });
-                    // Find next occurrence in same sentence
                     localPos = sent.indexOf(m.text, localPos + 1);
                 }
             });
-        });
 
-        // 3. Apply Replacements (Reverse Order to prevent index invalidation logic complexity)
-        // Actually, since we replace the node content, we just need to match the ranges to nodes.
-        // Sorting descending by start index helps dealing with overlaps simply.
+            // --- Phase 2: Aggressive Match (Experimental) ---
+            if (currentAutoTranslate.aggressiveMode) {
+                // Identify candidates that exist in translation but NOT in matched entries
+                const normTrans = normalizeEnglishText(trans);
+                const missedCandidates = currentEntries.filter(e => {
+                    if (matchedEntryIds.has(e.id)) return false; // Already matched
+                    // Check if it appears in translation
+                    const inTrans = normTrans.includes(e.text.toLowerCase()) || 
+                                    (e.inflections && e.inflections.some(inf => normTrans.includes(inf.toLowerCase())));
+                    return inTrans;
+                });
+
+                if (missedCandidates.length > 0) {
+                    // console.log("Aggressive Mode: Missed candidates in sentence:", missedCandidates.map(c => c.text));
+                    
+                    for (const missed of missedCandidates) {
+                        try {
+                            // Call API to get rich definitions (real-time lookup)
+                            const response = await browser.runtime.sendMessage({
+                                action: 'LOOKUP_WORD_RICH',
+                                text: missed.text
+                            });
+
+                            if (response && response.success && response.data) {
+                                // Perform Aggressive Matching with new definitions on the sentence
+                                // Note: We should ideally exclude ranges already covered by primary matches,
+                                // but for simplicity, we let the overlap filter handle it later.
+                                const aggMatches = findAggressiveMatches(sent, missed, response.data);
+                                
+                                aggMatches.forEach(m => {
+                                    let localPos = sent.indexOf(m.text);
+                                    while (localPos !== -1) {
+                                        replacements.push({
+                                            start: sentStart + localPos,
+                                            end: sentStart + localPos + m.text.length,
+                                            entry: m.entry
+                                        });
+                                        localPos = sent.indexOf(m.text, localPos + 1);
+                                    }
+                                });
+                            }
+                        } catch (e) {
+                            console.warn("Aggressive lookup failed for", missed.text, e);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Apply Replacements (Reverse Order & Overlap Check)
         replacements.sort((a, b) => b.start - a.start);
 
-        // Filter overlaps (keep longest/first)
         const safeReplacements: typeof replacements = [];
         let lastStart = Number.MAX_VALUE;
         for (const r of replacements) {
+            // Overlap check: ensure current end is not greater than previous start (since we iterate reverse)
             if (r.end <= lastStart) {
                 safeReplacements.push(r);
                 lastStart = r.start;
@@ -501,8 +542,6 @@ export default defineContentScript({
 
         // 4. Execute DOM Manipulation
         safeReplacements.forEach(r => {
-            // Find which node contains this replacement completely
-            // (Simplification: We assume words don't span across HTML tags like <b>...</b>)
             const target = nodeMap.find(n => r.start >= n.start && r.end <= n.end);
             
             if (target) {
@@ -512,17 +551,16 @@ export default defineContentScript({
                 
                 const val = node.nodeValue || "";
                 const before = val.substring(0, localStart);
-                const mid = val.substring(localStart, localEnd); // The text to replace
+                const mid = val.substring(localStart, localEnd);
                 const after = val.substring(localEnd);
 
                 // Sanity check
                 if (mid !== r.entry.text && mid !== r.entry.translation && mid !== mid) return;
 
-                // Construct replacement HTML
                 const span = document.createElement('span');
                 span.className = 'context-lingo-word';
                 span.innerHTML = buildReplacementHtml(
-                    mid, // Original Chinese text found
+                    mid, // Original text found
                     r.entry.text,
                     r.entry.category,
                     currentStyles,
@@ -530,7 +568,6 @@ export default defineContentScript({
                     r.entry.id
                 );
 
-                // Replace the text node with: Text(before) + Span + Text(after)
                 const parent = node.parentNode;
                 if (parent) {
                     if (after) parent.insertBefore(document.createTextNode(after), node.nextSibling);
@@ -544,7 +581,6 @@ export default defineContentScript({
 
     class TranslationScheduler {
         private buffer: { block: HTMLElement, sourceText: string }[] = [];
-        // Updated Queue to handle sentences
         private requestQueue: { 
             combinedText: string, 
             mappings: { block: HTMLElement, originalSentence: string, index: number }[] 
@@ -552,27 +588,23 @@ export default defineContentScript({
         
         private isProcessingQueue = false;
         private timer: ReturnType<typeof setTimeout> | null = null;
-        private delimiter = " ||| "; // Sentence delimiter for API
+        private delimiter = " ||| "; 
         
-        private maxBatchSize = 10; // Reduced batch size because we split into sentences now
+        private maxBatchSize = 10; 
         private maxCharCount = 2000; 
         private rateLimitDelay = 350;
 
         add(block: HTMLElement) {
             if (block.hasAttribute('data-context-lingo-scanned')) return;
-            
             const sourceText = block.innerText?.trim();
             if (!sourceText || sourceText.length < 2 || !/[\u4e00-\u9fa5]/.test(sourceText)) return;
-            
             block.setAttribute('data-context-lingo-scanned', 'pending');
             this.buffer.push({ block, sourceText });
             this.scheduleFlush();
         }
 
         private scheduleFlush() {
-            // Count total chars approximately
             const currentChars = this.buffer.reduce((acc, item) => acc + item.sourceText.length, 0);
-            
             if (this.buffer.length >= this.maxBatchSize || currentChars >= this.maxCharCount) {
                 if (this.timer) clearTimeout(this.timer);
                 this.flushBufferToQueue();
@@ -588,8 +620,6 @@ export default defineContentScript({
             if (this.timer) { clearTimeout(this.timer); this.timer = null; }
 
             const batchItems = this.buffer.splice(0, this.buffer.length);
-            
-            // Sentence Splitting Logic Here
             const allSentences: string[] = [];
             const mappings: { block: HTMLElement, originalSentence: string, index: number }[] = [];
             
@@ -605,10 +635,7 @@ export default defineContentScript({
                 });
             });
 
-            // If combined text is too long, we might need to split this further in real production,
-            // but for now we rely on maxBatchSize controlling the input.
             const combinedText = allSentences.join(this.delimiter);
-
             this.requestQueue.push({ combinedText, mappings });
             this.processQueue();
         }
@@ -638,19 +665,13 @@ export default defineContentScript({
 
                     if (response.success && response.data.Response?.TargetText) {
                          const fullTranslatedText = response.data.Response.TargetText;
-                         // Split by delimiter (handling potential extra spaces added by translator)
                          const splitPattern = /\s*\|\|\|\s*/; 
                          const translatedSentences = fullTranslatedText.split(splitPattern);
     
-                         // Map back to blocks
-                         // We need to group sentences back by block to apply them efficiently
-                         // or apply per sentence (which might be cleaner for replacement)
-                         
                          const blockUpdates = new Map<HTMLElement, { sourceSentences: string[], transSentences: string[] }>();
                          
                          batchRequest.mappings.forEach((mapItem) => {
                              const trans = translatedSentences[mapItem.index] || "";
-                             
                              if (!blockUpdates.has(mapItem.block)) {
                                  blockUpdates.set(mapItem.block, { sourceSentences: [], transSentences: [] });
                              }
@@ -660,12 +681,14 @@ export default defineContentScript({
                          });
 
                          // Apply updates per block
+                         // Wait for all blocks to be processed (important for async aggressive mode)
+                         const updatePromises: Promise<void>[] = [];
                          blockUpdates.forEach((data, block) => {
-                             this.applyTranslationWithSentences(block, data.sourceSentences, data.transSentences);
+                             updatePromises.push(this.applyTranslationWithSentences(block, data.sourceSentences, data.transSentences));
                          });
+                         await Promise.all(updatePromises);
 
                     } else {
-                        // Error handling: mark all blocks as error
                         const affectedBlocks = new Set(batchRequest.mappings.map(m => m.block));
                         affectedBlocks.forEach(b => b.setAttribute('data-context-lingo-scanned', 'error'));
                     }
@@ -678,11 +701,10 @@ export default defineContentScript({
             this.isProcessingQueue = false;
         }
 
-        private applyTranslationWithSentences(block: HTMLElement, sourceSentences: string[], transSentences: string[]) {
+        private async applyTranslationWithSentences(block: HTMLElement, sourceSentences: string[], transSentences: string[]) {
             const fullSource = sourceSentences.join('');
-            const fullTrans = transSentences.join(' '); // English usually space separated
+            const fullTrans = transSentences.join(' '); 
 
-            // Cache full translation for context capture
             block.setAttribute('data-lingo-source', fullSource);
             block.setAttribute('data-lingo-translation', fullTrans);
 
@@ -695,9 +717,9 @@ export default defineContentScript({
                 }
             }
 
-            // USE NEW LOGIC
             block.setAttribute('data-context-lingo-scanned', 'true');
-            applySentenceScopedReplacements(block, sourceSentences, transSentences);
+            // Await the potentially async replacement process
+            await applySentenceScopedReplacements(block, sourceSentences, transSentences);
         }
     }
 

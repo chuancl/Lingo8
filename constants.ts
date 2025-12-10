@@ -170,6 +170,7 @@ export const DEFAULT_AUTO_TRANSLATE: AutoTranslateConfig = {
   bilingualMode: false,
   translateWholePage: false,
   matchInflections: true, // Default Enabled
+  aggressiveMode: false, // Default Disabled
   blacklist: ['google.com', 'baidu.com'], 
   whitelist: ['nytimes.com', 'medium.com'],
   ttsSpeed: 1.0,

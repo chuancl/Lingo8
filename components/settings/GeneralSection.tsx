@@ -1,12 +1,7 @@
 
-
-
-
-
-
 import React, { useState } from 'react';
 import { AutoTranslateConfig } from '../../types';
-import { ShieldAlert, ShieldCheck, X, Mic2, SplitSquareHorizontal, Scan } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, X, Mic2, SplitSquareHorizontal, Scan, Zap, AlertTriangle } from 'lucide-react';
 
 interface GeneralSectionProps {
   config: AutoTranslateConfig;
@@ -106,6 +101,39 @@ export const GeneralSection: React.FC<GeneralSectionProps> = ({ config, setConfi
               />
               <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
            </label>
+        </div>
+
+        {/* Aggressive Mode Toggle */}
+        <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100 relative overflow-hidden">
+           <div className="flex items-start gap-3 relative z-10">
+              <div className="bg-white p-2 rounded-lg border border-slate-200 shadow-sm text-amber-500">
+                  <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                  <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900">激进匹配模式 (Aggressive Mode)</h3>
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 font-bold">实验性</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 max-w-lg leading-relaxed">
+                      当译文中出现单词但未成功匹配时，<strong>实时调用词典 API</strong> 获取该词所有中文释义，并降低匹配门槛进行二次替换。
+                      <br/>
+                      <span className="text-amber-600 flex items-center mt-1"><AlertTriangle className="w-3 h-3 mr-1"/> 注意：开启后会显著增加 API 请求量，可能导致翻译变慢。</span>
+                  </p>
+              </div>
+           </div>
+           <div className="relative z-10">
+               <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={config.aggressiveMode} 
+                    onChange={e => setConfig({...config, aggressiveMode: e.target.checked})} 
+                    className="sr-only peer" 
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+               </label>
+           </div>
+           {/* Background Decoration */}
+           <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-amber-500/5 rounded-full pointer-events-none"></div>
         </div>
 
         {/* TTS Speed Setting */}

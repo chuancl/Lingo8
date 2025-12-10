@@ -295,6 +295,7 @@ export interface AutoTranslateConfig {
   bilingualMode: boolean; 
   translateWholePage: boolean; // New setting for scanning scope
   matchInflections: boolean; // New: Smart morphology matching
+  aggressiveMode: boolean; // NEW: Aggressive Dictionary Matching
   blacklist: string[];
   whitelist: string[];
   ttsSpeed: number;
