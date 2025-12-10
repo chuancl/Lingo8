@@ -3,7 +3,7 @@ import React from 'react';
 
 export const Logo: React.FC<{ className?: string, withText?: boolean, textClassName?: string }> = ({ className = "w-10 h-10", withText = true, textClassName }) => {
   return (
-    <div className={`flex items-center gap-2 select-none group ${textClassName || 'text-current'}`}>
+    <div className={`flex items-center gap-2 select-none group ${textClassName || 'text-zinc-100'}`}>
       {/* 
          Icon Design: "Linguistic Spark" - Refined V2
       */}
@@ -87,45 +87,74 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
       </svg>
       
       {withText && (
-        <div className="flex items-end leading-none tracking-tight ml-2 font-sans h-14 pb-2 relative top-1">
+        <div className="relative h-10 w-36 ml-1 overflow-visible">
             {/* 
-               Design: "Massive Fusion Glyph"
-               Structure: [Re] [W] [ord]
+               ReWord Logo Art Composition
+               Scaled down from original 1200x320 canvas to fit sidebar
             */}
-            
-            {/* Group 1: Re + 易 */}
-            <div className="relative flex items-baseline mr-0.5">
-                <span className="text-5xl font-bold text-indigo-300 drop-shadow-sm tracking-tighter">R</span>
-                <span className="text-3xl font-bold text-indigo-200">e</span>
-                
-                {/* 易: Wedged deep between e and W */}
-                <span className="absolute -top-[2px] -right-[12px] text-base font-extrabold text-cyan-400 font-serif transform -rotate-12 z-20 drop-shadow-[0_2px_1px_rgba(0,0,0,0.8)]">易</span>
-            </div>
+            <div 
+                className="absolute left-0 top-1/2 -translate-y-1/2 origin-left pointer-events-none whitespace-nowrap"
+                style={{ width: '1200px', height: '320px', transform: 'scale(0.12)' }}
+            >
+                {/* 1. R (Base) */}
+                <div 
+                    className="absolute font-sans font-normal leading-none text-current" 
+                    style={{ fontSize: '300px', left: '0px', top: '0px', letterSpacing: '-5px', zIndex: 1, transition: 'color 0.5s' }}
+                >R</div>
 
-            {/* Group 2: W */}
-            <span className="text-5xl font-extrabold text-white z-10 drop-shadow-md ml-1 mr-[-2px]">W</span>
+                {/* 2. Yi (Emerald) - 易 */}
+                <div 
+                    className="absolute font-serif font-bold leading-none text-emerald-400" 
+                    style={{ fontSize: '130px', left: '165px', top: '-50px', transform: 'rotate(-15deg)', zIndex: 10, textShadow: '0 0 25px rgba(52, 211, 153, 0.5)', transition: 'color 0.5s' }}
+                >易</div>
 
-            {/* Group 3: OR + 语 + d + 道 */}
-            <div className="relative flex items-end ml-[-4px]">
-                {/* 
-                   Vertical Stack: OR (Top) + Yu (Bottom) 
-                   Positioned absolutely to overlap 'd'
-                */}
-                <div className="absolute left-[2px] bottom-[10px] z-30 flex flex-col items-end pointer-events-none">
-                    {/* or: Larger, climbing onto 'd' */}
-                    <span className="text-[12px] font-bold text-slate-300 uppercase leading-none tracking-tighter transform translate-x-[14px] translate-y-[2px] rotate-[-5deg]">or</span>
-                    {/* 语: Tucked underneath */}
-                    <span className="text-sm font-extrabold text-fuchsia-400 font-serif leading-none drop-shadow-[0_2px_1px_rgba(0,0,0,0.8)] mt-0.5">语</span>
-                </div>
+                {/* 3. e (Base) */}
+                <div 
+                    className="absolute font-sans font-normal leading-none text-current" 
+                    style={{ fontSize: '220px', left: '185px', top: '100px', transform: 'rotate(25deg)', zIndex: 2, transition: 'color 0.5s' }}
+                >e</div>
 
-                {/* d + 道 */}
-                <div className="relative">
-                    {/* d: 6xl size, 'bold' (not extrabold) to make the 'o' thinner/larger inside */}
-                    <span className="text-6xl font-bold text-white leading-[0.75] drop-shadow-md">d</span>
-                    
-                    {/* 道: Nestled inside the bowl of 'd' */}
-                    <span className="absolute bottom-[9px] left-[10px] text-[13px] font-extrabold text-amber-400 font-serif z-20 drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">道</span>
-                </div>
+                {/* 4. W (Blue) */}
+                <div 
+                    className="absolute font-sans font-normal leading-none text-blue-400" 
+                    style={{ fontSize: '300px', left: '315px', top: '0px', zIndex: 5, transition: 'color 0.5s' }}
+                >W</div>
+
+                {/* 5. O (Base) */}
+                <div 
+                    className="absolute font-sans font-bold leading-none text-current" 
+                    style={{ fontSize: '110px', left: '640px', top: '30px', zIndex: 6, transition: 'color 0.5s' }}
+                >O</div>
+
+                {/* 6. Yu (Fuchsia) - 语 */}
+                <div 
+                    className="absolute font-serif font-bold leading-none text-fuchsia-400" 
+                    style={{ fontSize: '85px', left: '630px', top: '160px', zIndex: 7, textShadow: '0 0 25px rgba(232, 121, 249, 0.5)', transition: 'color 0.5s' }}
+                >语</div>
+
+                {/* 7. d (Blue) - Base Body */}
+                <div 
+                    className="absolute font-sans font-normal leading-none text-blue-400" 
+                    style={{ fontSize: '300px', left: '705px', top: '45px', zIndex: 5, transition: 'color 0.5s', fontFamily: 'Arial, sans-serif' }}
+                >d</div>
+
+                {/* 7b. l (Blue) - Neck Extension for d */}
+                <div 
+                    className="absolute font-sans font-normal leading-none text-blue-400" 
+                    style={{ fontSize: '300px', left: '848px', top: '-125px', zIndex: 5, transition: 'color 0.5s', fontFamily: 'Arial, sans-serif' }}
+                >l</div>
+
+                {/* 8. Dao (Orange) - 道 */}
+                <div 
+                    className="absolute font-serif font-bold leading-none text-orange-400" 
+                    style={{ fontSize: '70px', left: '740px', top: '30px', transform: 'rotate(-10deg)', zIndex: 20, textShadow: '0 0 25px rgba(251, 146, 60, 0.5)', transition: 'color 0.5s' }}
+                >道</div>
+
+                {/* 9. r (Base) - Inside d */}
+                <div 
+                    className="absolute font-sans font-normal leading-none text-current" 
+                    style={{ fontSize: '140px', left: '785px', top: '135px', zIndex: 10, transition: 'color 0.5s' }}
+                >r</div>
             </div>
         </div>
       )}
