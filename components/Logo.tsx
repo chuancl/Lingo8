@@ -3,13 +3,13 @@ import React from 'react';
 
 export const Logo: React.FC<{ className?: string, withText?: boolean, textClassName?: string }> = ({ className = "w-10 h-10", withText = true, textClassName }) => {
   return (
-    <div className={`flex items-center gap-3 select-none group ${textClassName || 'text-current'}`}>
+    <div className={`flex items-center gap-2.5 select-none group ${textClassName || 'text-current'}`}>
       {/* 
          Icon Design: "Linguistic Spark"
          - Base: Blue Gradient Sphere
          - Center: Sparkles/Stars
       */}
-      <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-md transition-transform duration-500 group-hover:scale-105`}>
+      <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-lg transition-transform duration-500 group-hover:scale-105`}>
         <defs>
           <linearGradient id="sphere_gradient" x1="20" y1="20" x2="100" y2="100" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="#60a5fa" />   {/* Blue 400 - Highlight */}
@@ -56,35 +56,35 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
       </svg>
       
       {withText && (
-        <div className="flex items-baseline tracking-tight relative ml-1">
+        <div className="flex items-end leading-none tracking-tight ml-0.5 font-sans h-10 pb-1">
             {/* 
-               Design: "Linguistic Ornament"
-               Base: ReWord
-               Ornaments: 易 (Top-Left), 道 (Top-Center over 'or'), 语 (Bottom-Right)
+               Design: "Fusion Glyph"
+               Part 1: Re (Indigo) + 易 (Cyan, Nested Top)
             */}
-
-            {/* Part 1: Re + 易 */}
-            <div className="relative mr-[1px]">
-                <span className="font-sans font-bold text-slate-200 text-xl">Re</span>
-                {/* 易: Rose Color, Top Left hanging */}
-                <span className="absolute -top-1.5 -left-1.5 font-serif text-[10px] font-bold text-rose-400 drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)] transform -rotate-12">易</span>
+            <div className="relative flex items-baseline mr-[1px]">
+                <span className="text-2xl font-bold text-indigo-300 drop-shadow-sm">R</span>
+                <span className="text-base font-bold text-indigo-200">e</span>
+                {/* 易: 插到 e 上面 */}
+                <span className="absolute -top-[11px] -right-[2px] text-sm font-extrabold text-cyan-400 font-serif transform -rotate-12 drop-shadow-[0_2px_1px_rgba(0,0,0,0.8)]">易</span>
             </div>
 
-            {/* Part 2: W */}
-            <span className="font-sans font-extrabold text-white text-xl">W</span>
+            {/* Part 2: W (White, Main Pillar) */}
+            <span className="text-2xl font-extrabold text-white z-10 drop-shadow-md">W</span>
 
-            {/* Part 3: or + 道 */}
-            <div className="relative inline-flex flex-col items-center mx-[1px]">
-                {/* 道: Amber/Gold Color, Crown position */}
-                <span className="absolute -top-[14px] font-serif text-[11px] font-bold text-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] z-10 animate-in fade-in zoom-in duration-500">道</span>
-                <span className="font-sans font-extrabold text-white text-xl">or</span>
+            {/* Part 3: Column - or (Top) + 语 (Bottom) */}
+            <div className="flex flex-col justify-between h-[25px] mx-[2px] pb-[1px]">
+                {/* or: 上浮, 对齐 W 顶部 */}
+                <span className="text-[10px] font-bold text-slate-300 uppercase leading-none tracking-tighter transform -translate-y-[2px]">or</span>
+                {/* 语: 占据下方空间 */}
+                <span className="text-sm font-extrabold text-fuchsia-400 font-serif leading-none drop-shadow-[0_2px_1px_rgba(0,0,0,0.8)]">语</span>
             </div>
 
-            {/* Part 4: d + 语 */}
-            <div className="relative">
-                <span className="font-sans font-extrabold text-white text-xl">d</span>
-                {/* 语: Cyan/Blue Color, Bottom Right footing */}
-                <span className="absolute -bottom-1.5 -right-2 font-serif text-[10px] font-bold text-cyan-400 drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)] transform rotate-6">语</span>
+            {/* Part 4: d (Huge) + 道 (Embedded) */}
+            <div className="relative ml-[1px]">
+                {/* d: 巨大, 占据两行 */}
+                <span className="text-3xl font-extrabold text-white leading-none drop-shadow-md">d</span>
+                {/* 道: 嵌入 d 的圆圈 (bowl) 中 */}
+                <span className="absolute bottom-[4px] left-[3px] text-[11px] font-extrabold text-amber-400 font-serif z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">道</span>
             </div>
         </div>
       )}
