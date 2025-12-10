@@ -4,50 +4,45 @@ import React from 'react';
 export const Logo: React.FC<{ className?: string, withText?: boolean }> = ({ className = "w-10 h-10", withText = true }) => {
   return (
     <div className="flex items-center gap-3 select-none group">
-      <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-md transition-transform duration-500 group-hover:rotate-12`}>
+      <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-lg transition-transform duration-500 group-hover:scale-105`}>
         <defs>
-          <linearGradient id="aurora_gradient" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#7c3aed" />   {/* Violet 600 */}
+          <linearGradient id="aurora_solid" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#6366f1" />   {/* Indigo 500 */}
             <stop offset="50%" stopColor="#d946ef" />   {/* Fuchsia 500 */}
             <stop offset="100%" stopColor="#f97316" />  {/* Orange 500 */}
           </linearGradient>
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-             <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-             <feMerge>
-                 <feMergeNode in="coloredBlur"/>
-                 <feMergeNode in="SourceGraphic"/>
-             </feMerge>
+          {/* Internal shadow for depth */}
+          <filter id="inner_depth" x="-20%" y="-20%" width="140%" height="140%">
+             <feGaussianBlur stdDeviation="2" result="blur"/>
+             <feComposite in="SourceGraphic" in2="blur" operator="arithmetic" k2="-1" k3="1" result="shadowDiff"/>
+             <feFlood floodColor="black" floodOpacity="0.2"/>
+             <feComposite in2="shadowDiff" operator="in"/>
+             <feComposite in2="SourceGraphic" operator="over" result="firstfilter"/>
+             <feGaussianBlur in="firstfilter" stdDeviation="2" result="blur2"/>
+             <feComposite in2="SourceGraphic" operator="in" result="secondfilter"/>
           </filter>
         </defs>
         
-        {/* Background Organic Shape (Squircle-ish but fluid) */}
-        <path 
-            d="M64 8C33.0721 8 8 33.0721 8 64C8 94.9279 33.0721 120 64 120C94.9279 120 120 94.9279 120 64C120 48.5 114 34 104 24" 
-            stroke="url(#aurora_gradient)" 
-            strokeWidth="12" 
-            strokeLinecap="round"
-            className="opacity-20"
-        />
-
-        {/* The Flow / Wave Symbol */}
-        <path 
-            d="M36 64C36 48 44 40 56 40C68 40 68 56 80 56C92 56 100 44 100 32" 
-            stroke="url(#aurora_gradient)" 
-            strokeWidth="14" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-        />
-        <path 
-            d="M36 92C36 76 44 68 56 68C68 68 68 84 80 84C92 84 100 72 100 60" 
-            stroke="url(#aurora_gradient)" 
-            strokeWidth="14" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            opacity="0.6"
-        />
+        {/* 1. Main Container: Solid Gradient Squircle */}
+        <rect x="0" y="0" width="128" height="128" rx="32" fill="url(#aurora_solid)" />
         
-        {/* Floating Particle */}
-        <circle cx="96" cy="24" r="6" fill="#f97316" />
+        {/* 2. Subtle Glow Overlay (Top Left) */}
+        <ellipse cx="40" cy="30" rx="60" ry="40" fill="white" fillOpacity="0.15" />
+
+        {/* 3. The "Flow" Symbol (White Negative Space) */}
+        <g transform="translate(26, 30)" fill="white" filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.1))">
+            {/* Top Stream - Fast & Sharp */}
+            <path d="M4 16C4 11.5817 7.58172 8 12 8H30C45 8 50 20 65 20H72C76.4183 20 80 16.4183 80 12C80 7.58172 76.4183 4 72 4H60C40 4 35 16 15 16H12C7.58172 16 4 16 4 16Z" opacity="0.9" />
+            
+            {/* Middle Stream - Main Body, flowing smoothly */}
+            <path d="M0 40C0 35.5817 3.58172 32 8 32H20C40 32 48 48 68 48H86C90.4183 48 94 44.4183 94 40C94 35.5817 90.4183 32 86 32H75C70.5817 32 67 28.4183 67 24C67 19.5817 70.5817 16 75 16H88C99.0457 16 108 24.9543 108 36C108 47.0457 99.0457 56 88 56H65C45 56 38 40 18 40H8C3.58172 40 0 40 0 40Z" />
+
+            {/* Bottom Stream - Foundation */}
+            <path d="M12 64C7.58172 64 4 67.5817 4 72C4 76.4183 7.58172 80 12 80H25C45 80 50 68 70 68H76C80.4183 68 84 64.4183 84 60C84 55.5817 80.4183 52 76 52H68C48 52 42 64 22 64H12Z" opacity="0.9" />
+            
+            {/* Floating Particle (The Word) */}
+            <circle cx="96" cy="12" r="5" fill="white" fillOpacity="0.8" />
+        </g>
       </svg>
       
       {withText && (

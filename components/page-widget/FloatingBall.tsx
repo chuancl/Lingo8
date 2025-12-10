@@ -33,10 +33,10 @@ export const FloatingBall: React.FC<FloatingBallProps> = ({ config, badgeCount, 
             <div className={`relative transition-transform duration-300 ease-out ${isDragging ? 'scale-95 cursor-grabbing' : 'hover:scale-110'}`}>
                 
                 {/* Breathing Glow Background */}
-                <div className="absolute inset-0 rounded-full bg-fuchsia-500 blur-md opacity-40 animate-pulse"></div>
+                <div className="absolute inset-0 rounded-full bg-indigo-500 blur-md opacity-40 animate-pulse"></div>
 
-                {/* Main Orb - Aurora Gradient (Violet -> Fuchsia -> Orange) */}
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-600 via-fuchsia-500 to-orange-400 shadow-[0_8px_20px_-4px_rgba(192,38,211,0.5)] border border-white/20 flex items-center justify-center relative overflow-hidden backdrop-blur-md">
+                {/* Main Orb - Aurora Solid Gradient (Matching New Logo) */}
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 via-fuchsia-500 to-orange-500 shadow-[0_8px_20px_-4px_rgba(99,102,241,0.5)] border border-white/20 flex items-center justify-center relative overflow-hidden backdrop-blur-md">
                     
                     {/* Glossy Reflection Effect (Top) */}
                     <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/30 to-transparent opacity-80 pointer-events-none rounded-t-full"></div>
