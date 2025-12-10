@@ -3,9 +3,9 @@ import React from 'react';
 
 export const Logo: React.FC<{ className?: string, withText?: boolean, textClassName?: string }> = ({ className = "w-10 h-10", withText = true, textClassName }) => {
   return (
-    <div className={`flex items-center gap-2 select-none group ${textClassName || 'text-zinc-100'}`}>
+    <div className={`flex items-center gap-2 select-none group ${textClassName || 'text-current'}`}>
       {/* 
-         Icon Design: "Linguistic Spark" - Refined V2
+         Icon Design: "Linguistic Spark" - Refined
       */}
       <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-lg transition-transform duration-500 group-hover:scale-105`}>
         <defs>
@@ -40,7 +40,9 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
         {/* 1. Main Background Sphere */}
         <circle cx="64" cy="64" r="60" fill="url(#sphere_gradient)" className="shadow-inner" />
         
-        {/* 2. Orbit Ring: Top-Right to Bottom-Left */}
+        {/* 2. Orbit Ring: Top-Right to Bottom-Left 
+            rotate(135) rotates the ellipse so its major axis runs from Top-Right (approx 1:30 clock) to Bottom-Left (7:30 clock).
+        */}
         <ellipse 
             cx="64" cy="64" rx="56" ry="17" 
             stroke="white" strokeWidth="2" strokeOpacity="0.35" fill="none"
@@ -49,11 +51,11 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
         />
 
         {/* 3. Language Particles */}
-        {/* '文' - Font size reduced to 28 */}
+        {/* '文' - Moved slightly Top-Right from original (32, 54) -> (38, 48) */}
         <text 
             x="38" y="48" 
             fill="#fbbf24" 
-            fontSize="28" 
+            fontSize="30" 
             fontWeight="900" 
             fontFamily="serif" 
             textAnchor="middle" 
@@ -62,11 +64,11 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
             className="drop-shadow-sm"
         >文</text>
         
-        {/* 'A' - Font size reduced to 28 */}
+        {/* 'A' - Balanced position */}
         <text 
             x="94" y="102" 
             fill="#a5f3fc" 
-            fontSize="28" 
+            fontSize="30" 
             fontWeight="900" 
             fontFamily="sans-serif" 
             textAnchor="middle" 
@@ -75,10 +77,10 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
             className="drop-shadow-sm"
         >A</text>
 
-        {/* 4. Central Sparkle (Slightly Bigger) */}
+        {/* 4. Central Sparkle (Smaller & Subtle Animation) */}
         <g className="star-anim">
-            {/* Main 4-point Star: Increased size (Tips moved out by ~2px: 42->40, 86->88) */}
-            <path d="M 64 40 C 66 58, 70 60, 88 64 C 70 68, 66 70, 64 88 C 62 70, 58 68, 40 64 C 58 60, 62 58, 64 40 Z" fill="white" filter="url(#star_glow)" />
+            {/* Main 4-point Star: Reduced size (Radius approx 22px, previously ~34px) */}
+            <path d="M 64 42 C 66 58, 70 60, 86 64 C 70 68, 66 70, 64 86 C 62 70, 58 68, 42 64 C 58 60, 62 58, 64 42 Z" fill="white" filter="url(#star_glow)" />
             
             {/* Tiny satellite dots for texture */}
             <circle cx="84" cy="54" r="1.5" fill="#fcd34d" opacity="0.8" />
@@ -87,74 +89,45 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
       </svg>
       
       {withText && (
-        <div className="relative h-10 w-36 ml-1 overflow-visible">
+        <div className="flex items-end leading-none tracking-tight ml-2 font-sans h-14 pb-2 relative top-1">
             {/* 
-               ReWord Logo Art Composition
-               Scaled down from original 1200x320 canvas to fit sidebar
+               Design: "Massive Fusion Glyph"
+               Structure: [Re] [W] [ord]
             */}
-            <div 
-                className="absolute left-0 top-1/2 -translate-y-1/2 origin-left pointer-events-none whitespace-nowrap"
-                style={{ width: '1200px', height: '320px', transform: 'scale(0.12)' }}
-            >
-                {/* 1. R (Base) */}
-                <div 
-                    className="absolute font-sans font-normal leading-none text-current" 
-                    style={{ fontSize: '300px', left: '0px', top: '0px', letterSpacing: '-5px', zIndex: 1, transition: 'color 0.5s' }}
-                >R</div>
+            
+            {/* Group 1: Re + 易 */}
+            <div className="relative flex items-baseline mr-0.5">
+                <span className="text-5xl font-bold text-indigo-300 drop-shadow-sm tracking-tighter">R</span>
+                <span className="text-3xl font-bold text-indigo-200">e</span>
+                
+                {/* 易: Wedged deep between e and W */}
+                <span className="absolute -top-[2px] -right-[12px] text-base font-extrabold text-cyan-400 font-serif transform -rotate-12 z-20 drop-shadow-[0_2px_1px_rgba(0,0,0,0.8)]">易</span>
+            </div>
 
-                {/* 2. Yi (Emerald) - 易 */}
-                <div 
-                    className="absolute font-serif font-bold leading-none text-emerald-400" 
-                    style={{ fontSize: '130px', left: '165px', top: '-50px', transform: 'rotate(-15deg)', zIndex: 10, textShadow: '0 0 25px rgba(52, 211, 153, 0.5)', transition: 'color 0.5s' }}
-                >易</div>
+            {/* Group 2: W */}
+            <span className="text-5xl font-extrabold text-white z-10 drop-shadow-md ml-1 mr-[-2px]">W</span>
 
-                {/* 3. e (Base) */}
-                <div 
-                    className="absolute font-sans font-normal leading-none text-current" 
-                    style={{ fontSize: '220px', left: '185px', top: '100px', transform: 'rotate(25deg)', zIndex: 2, transition: 'color 0.5s' }}
-                >e</div>
+            {/* Group 3: OR + 语 + d + 道 */}
+            <div className="relative flex items-end ml-[-4px]">
+                {/* 
+                   Vertical Stack: OR (Top) + Yu (Bottom) 
+                   Positioned absolutely to overlap 'd'
+                */}
+                <div className="absolute left-[2px] bottom-[10px] z-30 flex flex-col items-end pointer-events-none">
+                    {/* or: Larger, climbing onto 'd' */}
+                    <span className="text-[12px] font-bold text-slate-300 uppercase leading-none tracking-tighter transform translate-x-[14px] translate-y-[2px] rotate-[-5deg]">or</span>
+                    {/* 语: Tucked underneath */}
+                    <span className="text-sm font-extrabold text-fuchsia-400 font-serif leading-none drop-shadow-[0_2px_1px_rgba(0,0,0,0.8)] mt-0.5">语</span>
+                </div>
 
-                {/* 4. W (Blue) */}
-                <div 
-                    className="absolute font-sans font-normal leading-none text-blue-400" 
-                    style={{ fontSize: '300px', left: '315px', top: '0px', zIndex: 5, transition: 'color 0.5s' }}
-                >W</div>
-
-                {/* 5. O (Base) */}
-                <div 
-                    className="absolute font-sans font-bold leading-none text-current" 
-                    style={{ fontSize: '110px', left: '640px', top: '30px', zIndex: 6, transition: 'color 0.5s' }}
-                >O</div>
-
-                {/* 6. Yu (Fuchsia) - 语 */}
-                <div 
-                    className="absolute font-serif font-bold leading-none text-fuchsia-400" 
-                    style={{ fontSize: '85px', left: '630px', top: '160px', zIndex: 7, textShadow: '0 0 25px rgba(232, 121, 249, 0.5)', transition: 'color 0.5s' }}
-                >语</div>
-
-                {/* 7. d (Blue) - Base Body */}
-                <div 
-                    className="absolute font-sans font-normal leading-none text-blue-400" 
-                    style={{ fontSize: '300px', left: '705px', top: '45px', zIndex: 5, transition: 'color 0.5s', fontFamily: 'Arial, sans-serif' }}
-                >d</div>
-
-                {/* 7b. l (Blue) - Neck Extension for d */}
-                <div 
-                    className="absolute font-sans font-normal leading-none text-blue-400" 
-                    style={{ fontSize: '300px', left: '848px', top: '-125px', zIndex: 5, transition: 'color 0.5s', fontFamily: 'Arial, sans-serif' }}
-                >l</div>
-
-                {/* 8. Dao (Orange) - 道 */}
-                <div 
-                    className="absolute font-serif font-bold leading-none text-orange-400" 
-                    style={{ fontSize: '70px', left: '740px', top: '30px', transform: 'rotate(-10deg)', zIndex: 20, textShadow: '0 0 25px rgba(251, 146, 60, 0.5)', transition: 'color 0.5s' }}
-                >道</div>
-
-                {/* 9. r (Base) - Inside d */}
-                <div 
-                    className="absolute font-sans font-normal leading-none text-current" 
-                    style={{ fontSize: '140px', left: '785px', top: '135px', zIndex: 10, transition: 'color 0.5s' }}
-                >r</div>
+                {/* d + 道 */}
+                <div className="relative">
+                    {/* d: 6xl size, 'bold' (not extrabold) to make the 'o' thinner/larger inside */}
+                    <span className="text-6xl font-bold text-white leading-[0.75] drop-shadow-md">d</span>
+                    
+                    {/* 道: Nestled inside the bowl of 'd' */}
+                    <span className="absolute bottom-[9px] left-[10px] text-[13px] font-extrabold text-amber-400 font-serif z-20 drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">道</span>
+                </div>
             </div>
         </div>
       )}
