@@ -5,7 +5,7 @@ import { PageWidget } from '../../components/PageWidget';
 import { WordBubble } from '../../components/WordBubble';
 import '../../index.css'; 
 import { entriesStorage, pageWidgetConfigStorage, autoTranslateConfigStorage, stylesStorage, originalTextConfigStorage, enginesStorage, interactionConfigStorage } from '../../utils/storage';
-import { WordEntry, PageWidgetConfig, WordInteractionConfig, WordCategory, AutoTranslateConfig, ModifierKey } from '../../types';
+import { WordEntry, PageWidgetConfig, WordInteractionConfig, WordCategory, AutoTranslateConfig, ModifierKey, StyleConfig, OriginalTextConfig } from '../../types';
 import { defineContentScript } from 'wxt/sandbox';
 import { createShadowRootUi } from 'wxt/client';
 import { findFuzzyMatches } from '../../utils/matching';
@@ -418,57 +418,128 @@ export default defineContentScript({
         await autoTranslateConfigStorage.setValue(currentAutoTranslate);
     }
 
-    const processTextNode = (textNode: Text, validMatches: { text: string, entry: WordEntry }[]) => {
-        const text = textNode.nodeValue;
-        if (!text) return;
+    /**
+     * Strict Sentence-Scoped Replacement
+     * Replaces `processTextNode` with a layout-aware algorithm.
+     * 1. Maps the block's text nodes to a single coordinate system.
+     * 2. Maps each source sentence to a range in that system.
+     * 3. Executes `findFuzzyMatches` strictly within that sentence's scope.
+     * 4. Applies replacements ONLY to the text nodes falling within that range.
+     */
+    const applySentenceScopedReplacements = (
+        block: HTMLElement, 
+        sourceSentences: string[], 
+        transSentences: string[]
+    ) => {
+        // 1. Map Text Nodes
+        const textNodes: Text[] = [];
+        const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+        let node;
+        while(node = walker.nextNode()) {
+            if (node.parentElement?.closest('.context-lingo-wrapper')) continue;
+            textNodes.push(node as Text);
+        }
 
-        // Sort by length desc to handle "China"(中国) before "China"(中) if they both exist?
-        // Actually findFuzzyMatches returns processed unique matches.
-        // We still sort by length to be safe for regex construction.
-        validMatches.sort((a, b) => b.text.length - a.text.length);
-        const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        
-        // 关键修复：确保匹配不区分大小写吗？中文不需要。但英文替换需要注意。
-        const pattern = new RegExp(`(${validMatches.map(m => escapeRegExp(m.text)).join('|')})`, 'g');
-
-        const parts = text.split(pattern);
-        if (parts.length === 1) return;
-
-        const fragment = document.createDocumentFragment();
-        parts.forEach(part => {
-             const match = validMatches.find(m => m.text === part);
-             if (match) {
-                 const span = document.createElement('span');
-                 span.className = 'context-lingo-word'; 
-                 span.innerHTML = buildReplacementHtml(
-                    match.text, 
-                    match.entry.text, 
-                    match.entry.category,
-                    currentStyles,
-                    currentOriginalTextConfig,
-                    match.entry.id
-                 );
-                 
-                 const tempDiv = document.createElement('div');
-                 tempDiv.innerHTML = buildReplacementHtml(
-                    match.text, 
-                    match.entry.text, 
-                    match.entry.category,
-                    currentStyles,
-                    currentOriginalTextConfig,
-                    match.entry.id
-                 );
-                 while (tempDiv.firstChild) {
-                     fragment.appendChild(tempDiv.firstChild);
-                 }
-             } else {
-                 fragment.appendChild(document.createTextNode(part));
-             }
+        let fullText = "";
+        const nodeMap: { node: Text, start: number, end: number }[] = [];
+        textNodes.forEach(n => {
+            const val = n.nodeValue || "";
+            nodeMap.push({ node: n, start: fullText.length, end: fullText.length + val.length });
+            fullText += val;
         });
 
-        if (textNode.parentNode) {
-            textNode.parentNode.replaceChild(fragment, textNode);
+        // 2. Identify Replacements per Sentence
+        const replacements: { start: number, end: number, entry: WordEntry }[] = [];
+        let searchCursor = 0;
+
+        sourceSentences.forEach((sent, idx) => {
+            // Find where this sentence sits in the full block text
+            // We search from the end of the previous sentence to maintain order
+            const sentStart = fullText.indexOf(sent, searchCursor);
+            if (sentStart === -1) {
+                // If exact match fails (e.g. whitespace diff), we try to skip ahead or just abort this sentence
+                return;
+            }
+            const sentEnd = sentStart + sent.length;
+            searchCursor = sentEnd;
+
+            // CRITICAL: Get matches ONLY for this sentence context
+            const trans = transSentences[idx] || "";
+            const matches = findFuzzyMatches(sent, currentEntries, trans);
+            
+            if (matches.length === 0) return;
+
+            // Map matches (relative to sentence) to global coordinates
+            matches.forEach(m => {
+                let localPos = sent.indexOf(m.text);
+                while (localPos !== -1) {
+                    replacements.push({
+                        start: sentStart + localPos,
+                        end: sentStart + localPos + m.text.length,
+                        entry: m.entry
+                    });
+                    // Find next occurrence in same sentence
+                    localPos = sent.indexOf(m.text, localPos + 1);
+                }
+            });
+        });
+
+        // 3. Apply Replacements (Reverse Order to prevent index invalidation logic complexity)
+        // Actually, since we replace the node content, we just need to match the ranges to nodes.
+        // Sorting descending by start index helps dealing with overlaps simply.
+        replacements.sort((a, b) => b.start - a.start);
+
+        // Filter overlaps (keep longest/first)
+        const safeReplacements: typeof replacements = [];
+        let lastStart = Number.MAX_VALUE;
+        for (const r of replacements) {
+            if (r.end <= lastStart) {
+                safeReplacements.push(r);
+                lastStart = r.start;
+            }
         }
+
+        // 4. Execute DOM Manipulation
+        safeReplacements.forEach(r => {
+            // Find which node contains this replacement completely
+            // (Simplification: We assume words don't span across HTML tags like <b>...</b>)
+            const target = nodeMap.find(n => r.start >= n.start && r.end <= n.end);
+            
+            if (target) {
+                const { node, start } = target;
+                const localStart = r.start - start;
+                const localEnd = r.end - start;
+                
+                const val = node.nodeValue || "";
+                const before = val.substring(0, localStart);
+                const mid = val.substring(localStart, localEnd); // The text to replace
+                const after = val.substring(localEnd);
+
+                // Sanity check
+                if (mid !== r.entry.text && mid !== r.entry.translation && mid !== mid) return;
+
+                // Construct replacement HTML
+                const span = document.createElement('span');
+                span.className = 'context-lingo-word';
+                span.innerHTML = buildReplacementHtml(
+                    mid, // Original Chinese text found
+                    r.entry.text,
+                    r.entry.category,
+                    currentStyles,
+                    currentOriginalTextConfig,
+                    r.entry.id
+                );
+
+                // Replace the text node with: Text(before) + Span + Text(after)
+                const parent = node.parentNode;
+                if (parent) {
+                    if (after) parent.insertBefore(document.createTextNode(after), node.nextSibling);
+                    parent.insertBefore(span, node.nextSibling);
+                    if (before) parent.insertBefore(document.createTextNode(before), node.nextSibling);
+                    parent.removeChild(node);
+                }
+            }
+        });
     };
 
     class TranslationScheduler {
@@ -575,10 +646,6 @@ export default defineContentScript({
                          // We need to group sentences back by block to apply them efficiently
                          // or apply per sentence (which might be cleaner for replacement)
                          
-                         // Current Architecture expects applying to BLOCK.
-                         // But we want to match per SENTENCE.
-                         // So we aggregate translated sentences per block.
-                         
                          const blockUpdates = new Map<HTMLElement, { sourceSentences: string[], transSentences: string[] }>();
                          
                          batchRequest.mappings.forEach((mapItem) => {
@@ -628,61 +695,9 @@ export default defineContentScript({
                 }
             }
 
-            // Perform Fuzzy Match PER SENTENCE to ensure high precision
-            // This relies on the "Context Verification" logic in findFuzzyMatches
-            
-            // 1. Gather all replacement candidates across all sentences
-            const allCandidates: { text: string, entry: WordEntry }[] = [];
-            
-            for (let i = 0; i < sourceSentences.length; i++) {
-                const sSrc = sourceSentences[i];
-                const sTrans = transSentences[i] || "";
-                
-                // Pass the specific SENTENCE translation to the matcher
-                const sentMatches = findFuzzyMatches(sSrc, currentEntries, sTrans);
-                allCandidates.push(...sentMatches);
-            }
-
-            // Remove duplicates (optional, findFuzzyMatches handles some, but across sentences we might have same word)
-            // But processTextNode handles the splitting by finding these texts.
-            // Since we process the whole block's text nodes, we need a unified list of candidates found in *any* sentence.
-            // Wait, if "中" appears in Sentence 1 (matches) and Sentence 2 (doesn't match),
-            // processTextNode will naively replace ALL "中" in the block.
-            // THIS IS A DOM TRAVERSAL ISSUE.
-            // If we want sentence-level precision replacement, we must limit replacement to the specific text node corresponding to that sentence.
-            // Text nodes don't necessarily align with sentences 1:1.
-            
-            // PRAGMATIC SOLUTION for this Extension:
-            // Since we passed the sentence-level translation to findFuzzyMatches, it only returns a match 
-            // if the translation *context* was valid for that specific sentence.
-            // So if `allCandidates` contains "中", it means at least ONE sentence translated it as China.
-            // Replacing all "中" in the paragraph might be an acceptable trade-off for simplicity vs DOM complexity,
-            // OR we refine `processTextNode` to be context aware (too hard without virtual DOM).
-            
-            // Better: We assume if the word is verified in *any* sentence in this block, it's valid for the block.
-            // (Most blocks are short paragraphs).
-            
-            // Unique candidates
-            const uniqueCandidatesMap = new Map<string, WordEntry>();
-            allCandidates.forEach(c => uniqueCandidatesMap.set(c.text, c.entry));
-            const uniqueCandidates = Array.from(uniqueCandidatesMap.entries()).map(([text, entry]) => ({ text, entry }));
-
-            if (uniqueCandidates.length > 0) {
-                 block.setAttribute('data-context-lingo-scanned', 'true');
-                 const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null);
-                 const textNodes: Text[] = [];
-                 let node;
-                 while(node = walker.nextNode()) textNodes.push(node as Text);
-
-                 textNodes.forEach(tn => {
-                     if (tn.parentElement?.closest('.context-lingo-wrapper')) return;
-                     if (tn.parentElement?.closest('.context-lingo-word')) return;
-                     if (tn.parentElement?.closest('.context-lingo-target')) return;
-                     processTextNode(tn, uniqueCandidates);
-                 });
-            } else {
-                 block.setAttribute('data-context-lingo-scanned', 'skipped_fuzzy_fail');
-            }
+            // USE NEW LOGIC
+            block.setAttribute('data-context-lingo-scanned', 'true');
+            applySentenceScopedReplacements(block, sourceSentences, transSentences);
         }
     }
 
