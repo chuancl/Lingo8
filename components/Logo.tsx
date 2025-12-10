@@ -87,14 +87,15 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
       </svg>
       
       {withText && (
-        <div className="relative h-10 w-36 ml-1 overflow-visible">
+        <div className="relative h-10 w-36 ml-2 overflow-visible">
             {/* 
                ReWord Logo Art Composition
                Scaled down from original 1200x320 canvas to fit sidebar
+               Adjusted vertical alignment: moved down to align visual center with icon.
             */}
             <div 
-                className="absolute left-0 top-1/2 -translate-y-1/2 origin-left pointer-events-none whitespace-nowrap"
-                style={{ width: '1200px', height: '320px', transform: 'scale(0.12)' }}
+                className="absolute left-0 top-1/2 -translate-y-[40%] origin-left pointer-events-none whitespace-nowrap"
+                style={{ width: '1200px', height: '320px', transform: 'scale(0.11)' }}
             >
                 {/* 1. R (Base) */}
                 <div 
@@ -138,7 +139,7 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
                     style={{ fontSize: '300px', left: '705px', top: '45px', zIndex: 5, transition: 'color 0.5s', fontFamily: 'Arial, sans-serif' }}
                 >d</div>
 
-                {/* 7b. l (Blue) - Neck Extension for d  */}
+                {/* 7b. l (Blue) - Neck Extension for d */}
                 <div 
                     className="absolute font-sans font-normal leading-none text-blue-400" 
                     style={{ fontSize: '300px', left: '848px', top: '-125px', zIndex: 5, transition: 'color 0.5s', fontFamily: 'Arial, sans-serif' }}
