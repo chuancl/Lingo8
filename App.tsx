@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -148,7 +149,7 @@ const App: React.FC = () => {
           
           {currentView === 'dashboard' && (
              <div className="animate-in fade-in duration-300">
-               <Dashboard />
+               <Dashboard entries={entries} scenarios={scenarios} />
              </div>
           )}
 
