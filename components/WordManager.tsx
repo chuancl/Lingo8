@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { WordCategory, WordEntry, MergeStrategyConfig, WordTab, Scenario } from '../types';
 import { DEFAULT_MERGE_STRATEGY } from '../constants';
@@ -124,11 +122,8 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
   const filteredEntries = useMemo(() => {
     return entries.filter(e => {
       if (activeTab !== 'all') {
-        if (activeTab === WordCategory.WantToLearnWord) {
-           if (e.category !== WordCategory.WantToLearnWord && e.category !== WordCategory.LearningWord) return false;
-        } else {
-           if (e.category !== activeTab) return false;
-        }
+        // Strict matching: Categories are now mutually exclusive
+        if (e.category !== activeTab) return false;
       }
       if (selectedScenarioId !== 'all') {
          if (e.scenarioId !== selectedScenarioId) return false;
@@ -201,27 +196,7 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
   const handleDeleteSelected = () => {
     if (selectedWords.size === 0) return;
 
-    if (activeTab === WordCategory.LearningWord) {
-        if (confirm(`确定不再将选中的 ${selectedWords.size} 个单词标记为“正在学”吗？\n它们将保留在“想学习”列表 (子集关系)。`)) {
-            const newEntries = entries.map(e => {
-                if (selectedWords.has(e.id)) {
-                    return { ...e, category: WordCategory.WantToLearnWord };
-                }
-                return e;
-            });
-            setEntries(newEntries);
-            setSelectedWords(new Set());
-            showToast('已移回“想学习”列表', 'success');
-        }
-        return;
-    }
-
-    let confirmMsg = `确定从当前列表删除选中的 ${selectedWords.size} 个单词吗？`;
-    if (activeTab === WordCategory.WantToLearnWord) {
-        confirmMsg = `确定彻底删除选中的 ${selectedWords.size} 个单词吗？\n注意：“正在学”是“想学习”的子集，删除后将同步从“正在学”中移除。`;
-    }
-
-    if (confirm(confirmMsg)) {
+    if (confirm(`确定从当前列表删除选中的 ${selectedWords.size} 个单词吗？`)) {
       setEntries(prev => prev.filter(e => !selectedWords.has(e.id)));
       setSelectedWords(new Set());
       showToast('删除成功', 'success');
@@ -447,6 +422,14 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
   
   const getTabLabel = (tab: WordTab) => tab === 'all' ? '所有单词' : tab;
 
+  const getTabDescription = (tab: WordTab) => {
+      if (tab === 'all') return "包含所有状态的单词";
+      if (tab === WordCategory.WantToLearnWord) return "计划未来要学习的单词";
+      if (tab === WordCategory.LearningWord) return "已经在网页上碰到过的单词";
+      if (tab === WordCategory.KnownWord) return "已经会的单词";
+      return "";
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col relative min-h-[600px]">
       <input type="file" ref={fileInputRef} className="hidden" accept=".json,.txt" onChange={handleImportFile} />
@@ -493,18 +476,19 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
       <div className="border-b border-slate-200 bg-white p-4 space-y-4">
         <div className="flex overflow-x-auto gap-2 pb-2 hide-scrollbar">
           {(['all', ...Object.values(WordCategory)] as WordTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all flex items-center ${
-                activeTab === tab
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                  : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              {tab === 'all' && <List className="w-4 h-4 mr-2" />}
-              {getTabLabel(tab)}
-            </button>
+            <Tooltip key={tab} text={getTabDescription(tab)}>
+                <button
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all flex items-center ${
+                    activeTab === tab
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                }`}
+                >
+                {tab === 'all' && <List className="w-4 h-4 mr-2" />}
+                {getTabLabel(tab)}
+                </button>
+            </Tooltip>
           ))}
         </div>
         
