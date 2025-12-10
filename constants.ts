@@ -127,9 +127,9 @@ export const DEFAULT_WORD_INTERACTION: WordInteractionConfig = {
 
 export const DEFAULT_PAGE_WIDGET: PageWidgetConfig = {
   enabled: true,
-  // Set to 0 to indicate uninitialized position, triggering auto-position logic in component
-  x: 0, 
-  y: 0,
+  // Set to -1 to indicate uninitialized position, triggering auto-position logic in component
+  x: -1, 
+  y: -1,
   width: 380,
   maxHeight: 600,
   opacity: 0.98,

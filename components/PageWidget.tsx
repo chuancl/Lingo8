@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { PageWidgetConfig, WordEntry, WordCategory, WordTab } from '../types';
 import { entriesStorage } from '../utils/storage';
@@ -11,13 +10,16 @@ interface PageWidgetProps {
   setConfig: (config: PageWidgetConfig) => void;
   pageWords: WordEntry[];
   setPageWords: React.Dispatch<React.SetStateAction<WordEntry[]>>;
-  onBatchAddToLearning?: (ids: string[]) => void; // New callback
+  onBatchAddToLearning?: (ids: string[]) => void;
 }
 
 export const PageWidget: React.FC<PageWidgetProps> = ({ config, setConfig, pageWords, onBatchAddToLearning }) => {
   // Local UI State to prevent storage trashing during drag
   const [localConfig, setLocalConfig] = useState<PageWidgetConfig>(config);
   
+  // Initialization state to prevent "top-left" flash
+  const [isInitialized, setIsInitialized] = useState(false);
+
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<WordTab>('all');
   const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -36,32 +38,44 @@ export const PageWidget: React.FC<PageWidgetProps> = ({ config, setConfig, pageW
   const ballDragOffset = useRef({ x: 0, y: 0 });
   const ballDragStartPos = useRef({ x: 0, y: 0 });
 
+  // --- 1. Smart Initialization Logic ---
   useEffect(() => {
-    if (config.x === 0 && config.y === 0) {
+    // If coordinates are negative or 0 (uninitialized), set default BOTTOM-RIGHT position
+    if (config.x <= 0 && config.y <= 0) {
       const winW = window.innerWidth;
       const winH = window.innerHeight;
-      const initialX = Math.max(20, winW - 100);
-      const initialY = Math.max(20, winH - 150);
+      
+      // Default: Bottom Right, with some padding
+      const initialX = Math.max(20, winW - 80); 
+      const initialY = Math.max(20, winH - 120);
       
       const newConfig = {
          ...config,
          x: initialX,
          y: initialY,
+         // Also center the modal initially if needed
          modalPosition: { x: Math.max(0, winW / 2 - 250), y: Math.max(0, winH / 2 - 300) }
       };
+      
       setLocalConfig(newConfig);
-      setConfig(newConfig);
+      setConfig(newConfig); // Save to storage immediately
+    } else {
+        // Config is valid, sync local state
+        setLocalConfig(config);
     }
-  }, []);
+    
+    // Mark as initialized so we can start rendering
+    setIsInitialized(true);
+  }, []); // Run once on mount
 
+  // Sync prop config updates (e.g. from storage changes elsewhere) if not dragging
   useEffect(() => {
-    if (!isDraggingBall && !isDraggingModal && !isResizing) {
+    if (!isDraggingBall && !isDraggingModal && !isResizing && isInitialized) {
       setLocalConfig(config);
     }
-  }, [config, isDraggingBall, isDraggingModal, isResizing]);
+  }, [config, isDraggingBall, isDraggingModal, isResizing, isInitialized]);
 
   const availableTabs = useMemo(() => {
-    // "All" tab is mandatory
     const tabs: WordTab[] = ['all'];
     if (localConfig.showSections.want) tabs.push(WordCategory.WantToLearnWord);
     if (localConfig.showSections.learning) tabs.push(WordCategory.LearningWord);
@@ -79,13 +93,11 @@ export const PageWidget: React.FC<PageWidgetProps> = ({ config, setConfig, pageW
     return pageWords.filter(w => {
        if (dismissedWordIds.has(w.id)) return false;
        
-       // Check if this category is enabled in config
        let isCategoryEnabled = false;
        if (w.category === WordCategory.WantToLearnWord) isCategoryEnabled = localConfig.showSections.want;
        else if (w.category === WordCategory.LearningWord) isCategoryEnabled = localConfig.showSections.learning;
        else if (w.category === WordCategory.KnownWord) isCategoryEnabled = localConfig.showSections.known;
        
-       // If the category itself is hidden, do not show word even in 'All' tab
        if (!isCategoryEnabled) return false;
 
        if (activeTab === 'all') return true;
@@ -117,11 +129,9 @@ export const PageWidget: React.FC<PageWidgetProps> = ({ config, setConfig, pageW
   const handleBatchSetToLearning = async () => {
     if (selectedWordIds.size === 0) return;
     
-    // Delegate the actual logic to parent (content script) to handle DOM context capturing
     if (onBatchAddToLearning) {
         onBatchAddToLearning(Array.from(selectedWordIds));
     } else {
-        // Fallback (should not happen in Content Script)
         const allEntries = await entriesStorage.getValue();
         const updatedEntries = allEntries.map(entry => {
            if (selectedWordIds.has(entry.id)) {
@@ -143,14 +153,22 @@ export const PageWidget: React.FC<PageWidgetProps> = ({ config, setConfig, pageW
     setSelectedWordIds(new Set());
   };
 
-  // Drag Logic
+  // --- Drag & Resize Logic ---
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDraggingBall) {
+        // Prevent dragging off-screen
+        const newX = e.clientX - ballDragOffset.current.x;
+        const newY = e.clientY - ballDragOffset.current.y;
+        
+        // Simple boundary check
+        const maxX = window.innerWidth - 60;
+        const maxY = window.innerHeight - 60;
+
         setLocalConfig(prev => ({
           ...prev,
-          x: e.clientX - ballDragOffset.current.x,
-          y: e.clientY - ballDragOffset.current.y
+          x: Math.max(0, Math.min(newX, maxX)),
+          y: Math.max(0, Math.min(newY, maxY))
         }));
       } else if (isDraggingModal) {
         setLocalConfig(prev => ({
@@ -176,6 +194,7 @@ export const PageWidget: React.FC<PageWidgetProps> = ({ config, setConfig, pageW
         setIsDraggingBall(false);
         setIsDraggingModal(false);
         setIsResizing(false);
+        // Persist change to storage when drag ends
         setConfig(localConfig);
       }
     };
@@ -188,17 +207,18 @@ export const PageWidget: React.FC<PageWidgetProps> = ({ config, setConfig, pageW
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDraggingBall, isDraggingModal, isResizing, localConfig]);
+  }, [isDraggingBall, isDraggingModal, isResizing, localConfig, setConfig]);
 
   const startDragBall = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
-    e.preventDefault();
+    e.preventDefault(); // Prevent text selection
     setIsDraggingBall(true);
     ballDragOffset.current = { x: e.clientX - localConfig.x, y: e.clientY - localConfig.y };
     ballDragStartPos.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleBallClick = (e: React.MouseEvent) => {
+    // Determine if it was a drag or a click
     const dist = Math.hypot(e.clientX - ballDragStartPos.current.x, e.clientY - ballDragStartPos.current.y);
     if (dist < 5) {
         setIsOpen(!isOpen);
@@ -229,7 +249,6 @@ export const PageWidget: React.FC<PageWidgetProps> = ({ config, setConfig, pageW
      setConfig(newVal);
   };
 
-  // Config DnD
   const handleConfigDragStart = (idx: number) => setDraggedConfigIndex(idx);
   const handleConfigDragOver = (e: React.DragEvent, idx: number) => {
      e.preventDefault();
@@ -247,7 +266,8 @@ export const PageWidget: React.FC<PageWidgetProps> = ({ config, setConfig, pageW
       setConfig(localConfig);
   };
 
-  if (!localConfig.enabled) return null;
+  // Prevent rendering until position is calculated to avoid top-left flash
+  if (!localConfig.enabled || !isInitialized) return null;
 
   return (
     <div 
