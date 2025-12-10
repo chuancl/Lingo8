@@ -1,7 +1,7 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { WordEntry, WordCategory, Scenario } from '../types';
-import { Activity, BookOpen, CheckCircle, Clock, Zap, MapPin, Tag } from 'lucide-react';
+import { Activity, BookOpen, Clock, Zap, MapPin, Tag, CalendarDays, BarChart } from 'lucide-react';
 
 interface DashboardProps {
   entries: WordEntry[];
@@ -11,14 +11,15 @@ interface DashboardProps {
 // --- Chart 1: Smooth Area Chart (Growth Trend) ---
 const GrowthAreaChart = ({ data, color = '#3b82f6', height = 160 }: { data: number[], color?: string, height?: number }) => {
     if (data.length < 2) return (
-        <div className="flex items-center justify-center h-full text-slate-300 text-xs italic">
-            积累更多数据以查看趋势
+        <div className="flex items-center justify-center h-full text-slate-300 text-xs italic flex-col gap-2">
+            <BarChart className="w-8 h-8 opacity-20"/>
+            <span>积累更多数据以查看趋势</span>
         </div>
     );
 
     const width = 1000; 
     const max = Math.max(...data, 1);
-    const min = 0;
+    const min = 0; // Always start Y-axis at 0 for absolute growth
     
     // Generate points
     const points = data.map((val, i) => {
@@ -65,7 +66,7 @@ const GrowthAreaChart = ({ data, color = '#3b82f6', height = 160 }: { data: numb
 
 // --- Chart 2: Consistency Heatmap (GitHub Style) ---
 const ConsistencyHeatmap = ({ dates }: { dates: string[] }) => {
-    // Generate last 16 weeks (approx 4 months)
+    // Generate last 20 weeks
     const weeks = 20; 
     const days = weeks * 7;
     const today = new Date();
@@ -85,11 +86,11 @@ const ConsistencyHeatmap = ({ dates }: { dates: string[] }) => {
         const count = activityMap.get(dateStr) || 0;
         
         let colorClass = "bg-slate-100";
-        if (count > 0) colorClass = "bg-green-200";
-        if (count > 2) colorClass = "bg-green-300";
-        if (count > 5) colorClass = "bg-green-400";
-        if (count > 10) colorClass = "bg-green-500";
-        if (count > 15) colorClass = "bg-green-600";
+        if (count > 0) colorClass = "bg-emerald-200";
+        if (count > 2) colorClass = "bg-emerald-300";
+        if (count > 5) colorClass = "bg-emerald-400";
+        if (count > 10) colorClass = "bg-emerald-500";
+        if (count > 15) colorClass = "bg-emerald-600";
 
         cells.push(
             <div 
@@ -131,6 +132,7 @@ const SourceBarChart = ({ data }: { data: { label: string, value: number, color:
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ entries, scenarios = [] }) => {
+  const [trendRange, setTrendRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
   // --- Data Processing ---
   const stats = useMemo(() => {
@@ -141,26 +143,51 @@ export const Dashboard: React.FC<DashboardProps> = ({ entries, scenarios = [] })
       
       const learningRate = total > 0 ? Math.round(((learning + known) / total) * 100) : 0;
 
-      // 1. Trend Data (Last 30 Days Cumulative)
+      // 1. Trend Data Calculation
       const now = new Date();
-      const last30DaysLabels = Array.from({length: 30}, (_, i) => {
-          const d = new Date(now);
-          d.setDate(d.getDate() - (29 - i));
-          return d.toISOString().split('T')[0];
-      });
-      
-      // Cumulative calculation
-      let cumulative = 0;
-      // Sort all entries by date ascending first
+      // Sort entries by time for accurate cumulative counting
       const sortedEntries = [...entries].sort((a, b) => a.addedAt - b.addedAt);
       
-      const trendData = last30DaysLabels.map(dateStr => {
-          // Count words added strictly BEFORE or ON this date
-          // For a simpler "Trend", let's just count total active words up to that day
-          // Filter entries where addedAt date <= current loop date
-          const count = sortedEntries.filter(e => new Date(e.addedAt).toISOString().split('T')[0] <= dateStr).length;
-          return count;
-      });
+      let trendData: number[] = [];
+      let trendLabelStr = '';
+
+      const getCountBefore = (timestamp: number) => {
+          // Efficiently find count of entries added before or at this timestamp
+          // Could use binary search for large datasets, but filter().length is fine for < 10k items
+          return sortedEntries.filter(e => e.addedAt <= timestamp).length;
+      };
+
+      if (trendRange === 'daily') {
+          trendLabelStr = '近 30 天';
+          // Last 30 Days
+          for (let i = 29; i >= 0; i--) {
+              const d = new Date(now);
+              d.setDate(now.getDate() - i);
+              d.setHours(23, 59, 59, 999); // End of day
+              trendData.push(getCountBefore(d.getTime()));
+          }
+      } else if (trendRange === 'weekly') {
+          trendLabelStr = '近 12 周';
+          // Last 12 Weeks
+          for (let i = 11; i >= 0; i--) {
+              const d = new Date(now);
+              d.setDate(now.getDate() - (i * 7));
+              d.setHours(23, 59, 59, 999);
+              trendData.push(getCountBefore(d.getTime()));
+          }
+      } else { // monthly
+          trendLabelStr = '近 12 个月';
+          // Last 12 Months
+          for (let i = 11; i >= 0; i--) {
+              // Calculate date: i months ago
+              const year = now.getFullYear();
+              const month = now.getMonth() - i;
+              // Get last day of that month
+              const d = new Date(year, month + 1, 0); 
+              d.setHours(23, 59, 59, 999);
+              trendData.push(getCountBefore(d.getTime()));
+          }
+      }
 
       // 2. Activity Dates (For Heatmap)
       const activityDates = entries.map(e => new Date(e.addedAt).toISOString().split('T')[0]);
@@ -195,8 +222,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ entries, scenarios = [] })
           .map(([label, value]) => ({ label, value, color: '#10b981' })) // Emerald
           .sort((a, b) => b.value - a.value);
 
-      return { total, want, learning, known, learningRate, trendData, activityDates, todayCount, sourceData, tagData };
-  }, [entries]);
+      return { total, want, learning, known, learningRate, trendData, trendLabelStr, activityDates, todayCount, sourceData, tagData };
+  }, [entries, trendRange]);
 
   return (
     <div className="space-y-6">
@@ -260,8 +287,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ entries, scenarios = [] })
               <div className="flex justify-between items-center mb-6">
                   <h3 className="font-bold text-slate-800 flex items-center">
                       <Zap className="w-4 h-4 mr-2 text-amber-500"/> 
-                      词汇积累趋势 (近30天)
+                      词汇积累趋势 ({stats.trendLabelStr})
                   </h3>
+                  
+                  {/* Time Range Selector */}
+                  <div className="flex bg-slate-100 p-1 rounded-lg">
+                      <button 
+                        onClick={() => setTrendRange('daily')}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${trendRange === 'daily' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        按天
+                      </button>
+                      <button 
+                        onClick={() => setTrendRange('weekly')}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${trendRange === 'weekly' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        按周
+                      </button>
+                      <button 
+                        onClick={() => setTrendRange('monthly')}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${trendRange === 'monthly' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        按月
+                      </button>
+                  </div>
               </div>
               <div className="flex-1 min-h-[160px]">
                   <GrowthAreaChart data={stats.trendData} />
@@ -285,16 +334,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ entries, scenarios = [] })
           {/* Left: Consistency Heatmap (2 Cols) */}
           <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-slate-800 flex items-center">
-                      <Clock className="w-4 h-4 mr-2 text-green-600"/>
-                      学习一致性 (Consistency)
-                  </h3>
+                  <div className="flex flex-col">
+                      <h3 className="font-bold text-slate-800 flex items-center">
+                          <CalendarDays className="w-4 h-4 mr-2 text-emerald-600"/>
+                          学习一致性 (Consistency)
+                      </h3>
+                      <span className="text-xs text-slate-400 mt-0.5 ml-6">过去 140 天的活跃记录</span>
+                  </div>
                   <div className="flex gap-1 text-[10px] text-slate-400 items-center">
                       <span>Less</span>
                       <div className="w-2 h-2 bg-slate-100 rounded-[1px]"></div>
-                      <div className="w-2 h-2 bg-green-300 rounded-[1px]"></div>
-                      <div className="w-2 h-2 bg-green-500 rounded-[1px]"></div>
-                      <div className="w-2 h-2 bg-green-700 rounded-[1px]"></div>
+                      <div className="w-2 h-2 bg-emerald-300 rounded-[1px]"></div>
+                      <div className="w-2 h-2 bg-emerald-500 rounded-[1px]"></div>
+                      <div className="w-2 h-2 bg-emerald-700 rounded-[1px]"></div>
                       <span>More</span>
                   </div>
               </div>
