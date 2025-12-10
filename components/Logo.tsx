@@ -58,19 +58,26 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
       </svg>
       
       {withText && (
-        <div className="flex flex-col justify-center -space-y-0.5">
-            {/* English Title: Modern, Tight, Dual-Tone */}
+        <div className="flex flex-col justify-center gap-0.5">
+            {/* English Title: ReWord */}
             <h1 className="text-2xl font-sans tracking-tight leading-none flex items-center">
               <span className="font-bold opacity-90">Re</span>
               <span className="font-extrabold text-blue-500">Word</span>
-              {/* Subtle accent dot */}
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-0.5 mb-1.5 animate-pulse"></span>
             </h1>
             
-            {/* Chinese Subtitle: Wide tracking for elegance */}
-            <span className="text-[10px] font-medium tracking-[0.4em] uppercase pl-0.5 opacity-60">
-              易语道
-            </span>
+            {/* 
+               Chinese Subtitle: "Fusion" Style 
+               - Uses `justify-between` to match width of English text.
+               - Uses a gradient text fill (from 'currentColor' to 'blue-500') 
+                 to simulate the transition from Source Language to Target Language.
+            */}
+            <div className="flex justify-between items-center text-[10px] font-bold tracking-widest uppercase w-full bg-gradient-to-r from-current via-blue-400 to-blue-600 bg-clip-text text-transparent opacity-90">
+              <span>易</span>
+              <span className="opacity-60">·</span>
+              <span>语</span>
+              <span className="opacity-60">·</span>
+              <span>道</span>
+            </div>
         </div>
       )}
     </div>
