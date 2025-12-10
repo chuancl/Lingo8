@@ -7,8 +7,7 @@ import { MergeConfigModal } from './word-manager/MergeConfigModal';
 import { AddWordModal } from './word-manager/AddWordModal';
 import { WordList } from './word-manager/WordList';
 import { Toast, ToastMessage } from './ui/Toast';
-import { entriesStorage, enginesStorage } from '../utils/storage';
-import { fetchWordDetails } from '../utils/dictionary-service';
+import { entriesStorage } from '../utils/storage';
 
 const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => {
   return (
@@ -22,30 +21,66 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, 
   );
 };
 
-// --- Import Template Definition ---
+// --- Standard Import Template (Comprehensive) ---
 const IMPORT_TEMPLATE = [
   {
-    "text": "example",
-    "note": "【模式1：智能查询】仅提供单词，系统将自动调用API补全释义、音标和例句。",
-    "category": "想学习单词"
-  },
-  {
-    "text": "book",
-    "translation": "预订",
-    "note": "【模式2：指定释义】提供 translation 作为提示，系统将优先匹配动词含义。",
-    "category": "正在学单词"
-  },
-  {
-    "skipLookup": true,
     "text": "serendipity",
-    "translation": "机缘凑巧",
+    "translation": "机缘凑巧; 意外发现珍奇事物的本领",
+    "category": "想学习单词",
     "phoneticUs": "/ˌsɛrənˈdɪpɪti/",
+    "phoneticUk": "/ˌsɛrənˈdɪpɪti/",
     "partOfSpeech": "n.",
+    "englishDefinition": "The occurrence and development of events by chance in a happy or beneficial way.",
     "contextSentence": "It was pure serendipity that we met.",
     "contextSentenceTranslation": "我们相遇纯属机缘巧合。",
-    "tags": ["High Frequency", "Literary"],
-    "note": "【模式3：完全自定义】设置 skipLookup: true，直接导入所有字段，不调用API。",
-    "category": "已掌握单词"
+    "mixedSentence": "It was pure serendipity (机缘巧合) that we met.",
+    "dictionaryExample": "Nature has created wonderful things by serendipity.",
+    "dictionaryExampleTranslation": "大自然通过机缘巧合创造了奇妙的事物。",
+    "inflections": ["serendipities"],
+    "tags": ["CET6", "GRE", "Literary"],
+    "importance": 3,
+    "cocaRank": 15000,
+    "phrases": [
+      { "text": "pure serendipity", "trans": "纯属巧合" }
+    ],
+    "roots": [
+      { "root": "serendip", "words": [{ "text": "serendipitous", "trans": "偶然的" }] }
+    ],
+    "synonyms": [
+      { "text": "chance", "trans": "机会" },
+      { "text": "fluke", "trans": "侥幸" }
+    ],
+    "image": "",
+    "video": {
+        "title": "Explanation Video",
+        "url": "https://example.com/video.mp4",
+        "cover": "https://example.com/cover.jpg"
+    },
+    "sourceUrl": "https://en.wikipedia.org/wiki/Serendipity"
+  },
+  {
+    "_说明": "本行仅为字段说明，导入时将被忽略",
+    "text": "【必填】单词拼写",
+    "translation": "【建议填写】中文释义",
+    "category": "选填。默认当前列表。可选值：想学习单词 | 正在学单词 | 已掌握单词",
+    "phoneticUs": "选填。美式音标",
+    "phoneticUk": "选填。英式音标",
+    "partOfSpeech": "选填。词性简写 (n. v. adj.)",
+    "englishDefinition": "选填。英文定义",
+    "contextSentence": "选填。上下文原句",
+    "contextSentenceTranslation": "选填。原句翻译",
+    "mixedSentence": "选填。中英混合例句",
+    "dictionaryExample": "选填。词典例句",
+    "dictionaryExampleTranslation": "选填。词典例句翻译",
+    "inflections": "选填。字符串数组 ['word1', 'word2']",
+    "tags": "选填。字符串数组 ['Tag1', 'Tag2']",
+    "importance": "选填。数字 (1-5)",
+    "cocaRank": "选填。数字 (排名)",
+    "phrases": "选填。对象数组 [{text, trans}]",
+    "roots": "选填。对象数组 [{root, words:[{text, trans}]}]",
+    "synonyms": "选填。对象数组 [{text, trans}]",
+    "image": "选填。图片链接 URL",
+    "sourceUrl": "选填。来源 URL"
   }
 ];
 
@@ -306,23 +341,9 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
 
         const targetCategoryDefault = activeTab === 'all' ? WordCategory.WantToLearnWord : activeTab;
         
-        // Engine Check: Only needed if there are candidates without 'skipLookup'
-        const needsEngine = candidates.some(c => !c.skipLookup);
-        let activeEngine = null;
-        
-        if (needsEngine) {
-            const engines = await enginesStorage.getValue();
-            activeEngine = engines.find(e => e.isEnabled);
-            if (!activeEngine) {
-                showToast("检测到需智能查询的词条，但未启用任何翻译引擎，导入已中止。", "error");
-                e.target.value = ''; 
-                return;
-            }
-        }
-
         let successCount = 0;
         let failCount = 0;
-        showToast(`开始处理 ${candidates.length} 个单词，请稍候...`, 'info');
+        showToast(`开始处理 ${candidates.length} 个单词...`, 'info');
         const newEntriesToAdd: WordEntry[] = [];
 
         // Helper to check duplicates
@@ -339,8 +360,10 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
         };
 
         for (const candidate of candidates) {
-            if (!candidate.text || typeof candidate.text !== 'string') {
-                failCount++; 
+            // Validation: Must have text. 
+            // Also ignore "Instruction" entries (those containing "必填" in text as per template)
+            if (!candidate.text || typeof candidate.text !== 'string' || candidate.text.includes('必填')) {
+                // Silently skip template description rows
                 continue;
             }
 
@@ -348,81 +371,50 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
             const scenarioId = selectedScenarioId === 'all' ? '1' : selectedScenarioId;
 
             try {
-                // Mode 1: Skip Lookup (Direct Import)
-                if (candidate.skipLookup) {
-                    if (isDuplicate(candidate.text, candidate.translation)) {
-                        failCount++;
-                        continue;
-                    }
-
-                    newEntriesToAdd.push({
-                        id: `import-direct-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                        text: candidate.text,
-                        translation: candidate.translation || '',
-                        phoneticUs: candidate.phoneticUs,
-                        phoneticUk: candidate.phoneticUk,
-                        partOfSpeech: candidate.partOfSpeech,
-                        englishDefinition: candidate.englishDefinition,
-                        contextSentence: candidate.contextSentence,
-                        contextSentenceTranslation: candidate.contextSentenceTranslation,
-                        mixedSentence: candidate.mixedSentence,
-                        dictionaryExample: candidate.dictionaryExample,
-                        dictionaryExampleTranslation: candidate.dictionaryExampleTranslation,
-                        inflections: candidate.inflections || [],
-                        tags: candidate.tags || [],
-                        importance: candidate.importance || 0,
-                        cocaRank: candidate.cocaRank || 0,
-                        phrases: candidate.phrases || [],
-                        roots: candidate.roots || [],
-                        synonyms: candidate.synonyms || [],
-                        image: candidate.image,
-                        video: candidate.video,
-                        category,
-                        addedAt: Date.now(),
-                        scenarioId,
-                        sourceUrl: candidate.sourceUrl
-                    });
-                    successCount++;
-                } 
-                // Mode 2: Smart Lookup (Rich Fetch)
-                else if (activeEngine) {
-                    const detailsList = await fetchWordDetails(candidate.text, candidate.translation, activeEngine);
-                    
-                    if (detailsList.length === 0) {
-                        failCount++; // No dictionary data found
-                    }
-
-                    for (const details of detailsList) {
-                         if (!details.text) continue;
-                         if (isDuplicate(details.text, details.translation)) continue;
-
-                         newEntriesToAdd.push({
-                            id: `import-smart-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                            text: details.text!,
-                            translation: details.translation || '',
-                            phoneticUs: details.phoneticUs,
-                            phoneticUk: details.phoneticUk,
-                            
-                            partOfSpeech: details.partOfSpeech, 
-
-                            contextSentence: details.contextSentence,
-                            mixedSentence: details.mixedSentence,
-                            dictionaryExample: details.dictionaryExample,
-                            dictionaryExampleTranslation: details.dictionaryExampleTranslation,
-                            
-                            inflections: details.inflections || [], 
-                            tags: details.tags || [],
-                            importance: details.importance || 0,
-                            cocaRank: details.cocaRank || 0,
-                            englishDefinition: details.englishDefinition,
-                            
-                            category, // User specified or current tab
-                            addedAt: Date.now(),
-                            scenarioId,
-                         });
-                         successCount++;
-                    }
+                // Direct Import Mode (Always)
+                // We rely entirely on the user-provided data.
+                if (isDuplicate(candidate.text, candidate.translation)) {
+                    failCount++;
+                    continue;
                 }
+
+                newEntriesToAdd.push({
+                    id: `import-direct-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                    text: candidate.text,
+                    translation: candidate.translation || '',
+                    
+                    // Optional Fields with Defaults
+                    phoneticUs: candidate.phoneticUs,
+                    phoneticUk: candidate.phoneticUk,
+                    partOfSpeech: candidate.partOfSpeech,
+                    englishDefinition: candidate.englishDefinition,
+                    
+                    contextSentence: candidate.contextSentence,
+                    contextSentenceTranslation: candidate.contextSentenceTranslation,
+                    mixedSentence: candidate.mixedSentence,
+                    
+                    dictionaryExample: candidate.dictionaryExample,
+                    dictionaryExampleTranslation: candidate.dictionaryExampleTranslation,
+                    
+                    inflections: candidate.inflections || [],
+                    tags: candidate.tags || [],
+                    importance: candidate.importance || 0,
+                    cocaRank: candidate.cocaRank || 0,
+                    
+                    phrases: candidate.phrases || [],
+                    roots: candidate.roots || [],
+                    synonyms: candidate.synonyms || [],
+                    
+                    image: candidate.image,
+                    video: candidate.video,
+                    
+                    // System Fields
+                    category,
+                    addedAt: Date.now(),
+                    scenarioId,
+                    sourceUrl: candidate.sourceUrl
+                });
+                successCount++;
             } catch (err) {
                 console.error(err);
                 failCount++;
@@ -431,9 +423,9 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
 
         if (newEntriesToAdd.length > 0) {
             setEntries(prev => [...prev, ...newEntriesToAdd]);
-            showToast(`导入完成: 新增 ${successCount}, 失败/重复 ${failCount}`, 'success');
+            showToast(`导入完成: 新增 ${successCount}, 重复/失败 ${failCount}`, 'success');
         } else {
-             showToast(`导入结束: 没有新增单词 (全部重复或失败)`, 'warning');
+             showToast(`导入结束: 没有新增单词 (全部重复或格式无效)`, 'warning');
         }
      };
      reader.readAsText(file);
@@ -672,7 +664,7 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
                         </Tooltip>
 
                         <div className="flex bg-white rounded-lg border border-slate-200 overflow-hidden divide-x divide-slate-200">
-                            <Tooltip text="下载标准导入模板 (JSON)">
+                            <Tooltip text="下载标准导入模板 (JSON)。提示：可将模板发给 AI，让其帮你按格式批量生成单词数据。">
                                 <button 
                                     onClick={handleDownloadTemplate}
                                     className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
@@ -681,7 +673,7 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
                                 </button>
                             </Tooltip>
                             
-                            <Tooltip text="支持 JSON 格式文件。智能模式下会自动查询释义。">
+                            <Tooltip text="支持 JSON 格式文件。将直接导入文件中的数据。">
                                 <button 
                                     onClick={triggerImport}
                                     className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 transition"
