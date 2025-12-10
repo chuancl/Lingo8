@@ -168,11 +168,6 @@ export const findAggressiveMatches = (
     // Single segments
     candidates.push(...segments.filter(s => /[\u4e00-\u9fa5]/.test(s)));
     
-    // ALSO add individual characters as candidates to catch "中" in "中印"
-    // even if Segmenter groups them.
-    const chars = sourceText.split('').filter(s => /[\u4e00-\u9fa5]/.test(s) && !CHINESE_STOP_WORDS.has(s));
-    candidates.push(...chars);
-    
     // Double segments (bi-grams)
     for(let i=0; i<segments.length-1; i++) {
         candidates.push(segments[i] + segments[i+1]);
@@ -190,7 +185,6 @@ export const findAggressiveMatches = (
     
     // 3. Similarity Check
     // Threshold 0.6 (60%) 
-    // "中"(1) vs "中国"(2) -> Intersection 1. Dice = 2*1/3 = 0.66 > 0.6. Matches.
     const THRESHOLD = 0.6;
 
     for (const cand of uniqueCandidates) {
