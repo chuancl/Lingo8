@@ -33,8 +33,8 @@ export const FloatingBall: React.FC<FloatingBallProps> = ({ config, badgeCount, 
             */}
             <div className={`relative transition-transform duration-300 ease-out ${isDragging ? 'scale-95 cursor-grabbing' : 'hover:scale-110'}`}>
                 
-                {/* Main Orb */}
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-700 shadow-[0_10px_25px_-5px_rgba(59,130,246,0.5)] border border-white/20 flex items-center justify-center relative overflow-hidden backdrop-blur-md">
+                {/* Main Orb - Updated to match Brand Gradient (Blue to Cyan) */}
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 shadow-[0_10px_25px_-5px_rgba(37,99,235,0.5)] border border-white/20 flex items-center justify-center relative overflow-hidden backdrop-blur-md">
                     
                     {/* Glossy Reflection Effect */}
                     <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/20 to-transparent opacity-60 pointer-events-none rounded-t-full"></div>

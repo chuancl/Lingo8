@@ -2,6 +2,7 @@
 import React from 'react';
 import { LayoutDashboard, BookOpen, Palette, Settings, Briefcase, MousePointerClick, Languages, Database, AppWindow, Sliders, Zap } from 'lucide-react';
 import { AppView, SettingSectionId } from '../types';
+import { Logo } from './Logo';
 
 interface SidebarProps {
   currentView: AppView;
@@ -30,11 +31,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, onS
 
   return (
     <div className="w-64 bg-slate-900 text-slate-100 h-screen flex flex-col fixed left-0 top-0 overflow-y-auto z-50 shadow-xl">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300">
-          ContextLingo
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">智能语境词汇扩展 v3.2</p>
+      <div className="px-6 pt-8 pb-6">
+        <Logo className="w-10 h-10 shadow-lg" />
       </div>
 
       <nav className="flex-1 px-3 space-y-6">
