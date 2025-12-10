@@ -26,7 +26,6 @@ const IMPORT_TEMPLATE = [
   {
     "text": "serendipity",
     "translation": "机缘凑巧; 意外发现珍奇事物的本领",
-    "category": "想学习单词",
     "phoneticUs": "/ˌsɛrənˈdɪpɪti/",
     "phoneticUk": "/ˌsɛrənˈdɪpɪti/",
     "partOfSpeech": "n.",
@@ -59,28 +58,27 @@ const IMPORT_TEMPLATE = [
     "sourceUrl": "https://en.wikipedia.org/wiki/Serendipity"
   },
   {
-    "_说明": "本行仅为字段说明，导入时将被忽略",
+    "_说明": "本行仅为字段说明，导入时将被忽略。请确保 JSON 格式正确。",
     "text": "【必填】单词拼写",
     "translation": "【建议填写】中文释义",
-    "category": "选填。默认当前列表。可选值：想学习单词 | 正在学单词 | 已掌握单词",
     "phoneticUs": "选填。美式音标",
     "phoneticUk": "选填。英式音标",
-    "partOfSpeech": "选填。词性简写 (n. v. adj.)",
+    "partOfSpeech": "选填。词性简写 (n. v. adj. adv. 等)",
     "englishDefinition": "选填。英文定义",
-    "contextSentence": "选填。上下文原句",
-    "contextSentenceTranslation": "选填。原句翻译",
-    "mixedSentence": "选填。中英混合例句",
-    "dictionaryExample": "选填。词典例句",
+    "contextSentence": "选填。上下文原句 (Source Sentence)",
+    "contextSentenceTranslation": "选填。原句中文翻译",
+    "mixedSentence": "选填。中英混合例句 (单词替换后的句子)",
+    "dictionaryExample": "选填。词典标准例句",
     "dictionaryExampleTranslation": "选填。词典例句翻译",
-    "inflections": "选填。字符串数组 ['word1', 'word2']",
-    "tags": "选填。字符串数组 ['Tag1', 'Tag2']",
-    "importance": "选填。数字 (1-5)",
-    "cocaRank": "选填。数字 (排名)",
-    "phrases": "选填。对象数组 [{text, trans}]",
-    "roots": "选填。对象数组 [{root, words:[{text, trans}]}]",
-    "synonyms": "选填。对象数组 [{text, trans}]",
-    "image": "选填。图片链接 URL",
-    "sourceUrl": "选填。来源 URL"
+    "inflections": "选填。字符串数组。单词的变形列表 (如复数、过去式、分词)。例如: ['books', 'booking']",
+    "tags": "选填。字符串数组。单词标签 (如考试等级、学科)。例如: ['CET4', 'Computer']",
+    "importance": "选填。数字 (0-5)。柯林斯星级 (Collins Stars)，5为最高频。",
+    "cocaRank": "选填。数字。COCA 语料库词频排名，数值越小越常用。",
+    "phrases": "选填。对象数组。常用短语。格式: [{ 'text': '短语英文', 'trans': '短语中文' }]",
+    "roots": "选填。对象数组。词根词缀。格式: [{ 'root': '词根', 'words': [{ 'text': '同根词', 'trans': '释义' }] }]",
+    "synonyms": "选填。对象数组。近义词。格式: [{ 'text': '近义词', 'trans': '释义' }]",
+    "image": "选填。图片 URL 链接",
+    "sourceUrl": "选填。来源 URL (文章链接或视频链接)"
   }
 ];
 
@@ -339,7 +337,8 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
            return;
         }
 
-        const targetCategoryDefault = activeTab === 'all' ? WordCategory.WantToLearnWord : activeTab;
+        // Determine target category based on active tab
+        const targetCategory = activeTab === 'all' ? WordCategory.WantToLearnWord : activeTab;
         
         let successCount = 0;
         let failCount = 0;
@@ -367,7 +366,6 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
                 continue;
             }
 
-            const category = candidate.category || targetCategoryDefault;
             const scenarioId = selectedScenarioId === 'all' ? '1' : selectedScenarioId;
 
             try {
@@ -398,8 +396,8 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
                     
                     inflections: candidate.inflections || [],
                     tags: candidate.tags || [],
-                    importance: candidate.importance || 0,
-                    cocaRank: candidate.cocaRank || 0,
+                    importance: typeof candidate.importance === 'number' ? candidate.importance : 0,
+                    cocaRank: typeof candidate.cocaRank === 'number' ? candidate.cocaRank : 0,
                     
                     phrases: candidate.phrases || [],
                     roots: candidate.roots || [],
@@ -408,8 +406,8 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
                     image: candidate.image,
                     video: candidate.video,
                     
-                    // System Fields
-                    category,
+                    // System Fields: Override category with active tab
+                    category: targetCategory,
                     addedAt: Date.now(),
                     scenarioId,
                     sourceUrl: candidate.sourceUrl
@@ -423,7 +421,7 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
 
         if (newEntriesToAdd.length > 0) {
             setEntries(prev => [...prev, ...newEntriesToAdd]);
-            showToast(`导入完成: 新增 ${successCount}, 重复/失败 ${failCount}`, 'success');
+            showToast(`导入完成: 新增 ${successCount} (至 ${targetCategory}), 重复/失败 ${failCount}`, 'success');
         } else {
              showToast(`导入结束: 没有新增单词 (全部重复或格式无效)`, 'warning');
         }
@@ -664,7 +662,7 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
                         </Tooltip>
 
                         <div className="flex bg-white rounded-lg border border-slate-200 overflow-hidden divide-x divide-slate-200">
-                            <Tooltip text="下载标准导入模板 (JSON)。提示：可将模板发给 AI，让其帮你按格式批量生成单词数据。">
+                            <Tooltip text="下载标准导入模板 (JSON)。提示：可将模板发给 AI (如 ChatGPT/Claude)，让其按格式批量生成单词数据。">
                                 <button 
                                     onClick={handleDownloadTemplate}
                                     className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
@@ -673,7 +671,7 @@ export const WordManager: React.FC<WordManagerProps> = ({ scenarios, entries, se
                                 </button>
                             </Tooltip>
                             
-                            <Tooltip text="支持 JSON 格式文件。将直接导入文件中的数据。">
+                            <Tooltip text="支持 JSON 格式文件。将直接导入文件中的数据至当前标签页。">
                                 <button 
                                     onClick={triggerImport}
                                     className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 transition"
