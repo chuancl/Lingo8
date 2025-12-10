@@ -5,10 +5,7 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
   return (
     <div className={`flex items-center gap-2 select-none group ${textClassName || 'text-current'}`}>
       {/* 
-         Icon Design: "Linguistic Spark" - Enhanced
-         - Base: Blue Gradient Sphere
-         - Center: Animated Sparkles/Stars
-         - Text: Vivid "文" and "A"
+         Icon Design: "Linguistic Spark" - Refined
       */}
       <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" className={`${className} drop-shadow-lg transition-transform duration-500 group-hover:scale-105`}>
         <defs>
@@ -18,7 +15,7 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
           </linearGradient>
           
           <filter id="star_glow" x="-50%" y="-50%" width="200%" height="200%">
-             <feGaussianBlur stdDeviation="2.5" result="blur"/>
+             <feGaussianBlur stdDeviation="2" result="blur"/>
              <feComposite in="SourceGraphic" in2="blur" operator="over"/>
           </filter>
 
@@ -28,16 +25,13 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
 
           <style>
             {`
-              @keyframes twinkle {
-                0%, 100% { opacity: 0.9; transform: scale(1); }
-                50% { opacity: 1; transform: scale(1.15); filter: drop-shadow(0 0 5px rgba(255,255,255,0.8)); }
+              @keyframes subtle-float {
+                0%, 100% { transform: translateY(0); opacity: 0.95; }
+                50% { transform: translateY(-2px); opacity: 1; filter: drop-shadow(0 0 4px rgba(255,255,255,0.7)); }
               }
               .star-anim {
-                animation: twinkle 3s infinite ease-in-out;
-                transform-origin: 64px 64px;
-              }
-              .orbit-spin {
-                 transition: stroke-opacity 0.3s;
+                animation: subtle-float 4s ease-in-out infinite;
+                transform-origin: center;
               }
             `}
           </style>
@@ -46,56 +40,51 @@ export const Logo: React.FC<{ className?: string, withText?: boolean, textClassN
         {/* 1. Main Background Sphere */}
         <circle cx="64" cy="64" r="60" fill="url(#sphere_gradient)" className="shadow-inner" />
         
-        {/* 2. Language Particles (Vivid Colors) */}
-        {/* '文' - Golden/Amber for contrast on blue */}
+        {/* 2. Orbit Ring: Top-Right to Bottom-Left 
+            rotate(135) rotates the ellipse so its major axis runs from Top-Right (approx 1:30 clock) to Bottom-Left (7:30 clock).
+        */}
+        <ellipse 
+            cx="64" cy="64" rx="56" ry="17" 
+            stroke="white" strokeWidth="2" strokeOpacity="0.35" fill="none"
+            transform="rotate(135 64 64)"
+            className="group-hover:stroke-opacity-60 transition-opacity duration-500"
+        />
+
+        {/* 3. Language Particles */}
+        {/* '文' - Moved slightly Top-Right from original (32, 54) -> (38, 48) */}
         <text 
-            x="32" y="54" 
+            x="38" y="48" 
             fill="#fbbf24" 
-            fontSize="32" 
+            fontSize="30" 
             fontWeight="900" 
             fontFamily="serif" 
             textAnchor="middle" 
-            transform="rotate(-10 32 54)"
+            transform="rotate(-5 38 48)" 
             filter="url(#text_shadow)"
             className="drop-shadow-sm"
         >文</text>
         
-        {/* 'A' - Bright Cyan/White for English */}
+        {/* 'A' - Balanced position */}
         <text 
-            x="96" y="104" 
+            x="94" y="102" 
             fill="#a5f3fc" 
-            fontSize="32" 
+            fontSize="30" 
             fontWeight="900" 
             fontFamily="sans-serif" 
             textAnchor="middle" 
-            transform="rotate(-10 96 104)"
+            transform="rotate(-5 94 102)"
             filter="url(#text_shadow)"
             className="drop-shadow-sm"
         >A</text>
 
-        {/* 3. The Cycling Orbit (Arrows/Swooshes) */}
-        <path 
-            d="M 40 70 Q 40 40 64 36" 
-            stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" fill="none"
-            className="orbit-spin group-hover:stroke-opacity-80"
-        />
-        <path 
-            d="M 88 58 Q 88 88 64 92" 
-            stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" fill="none"
-            className="orbit-spin group-hover:stroke-opacity-80"
-        />
-        {/* Arrow heads */}
-        <path d="M 64 36 L 58 32 M 64 36 L 58 40" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" className="group-hover:stroke-opacity-80 transition-opacity"/>
-        <path d="M 64 92 L 70 88 M 64 92 L 70 96" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.4" className="group-hover:stroke-opacity-80 transition-opacity"/>
-
-        {/* 4. Central Sparkle Cluster (Animated) */}
+        {/* 4. Central Sparkle (Smaller & Subtle Animation) */}
         <g className="star-anim">
-            {/* Main 4-point Star */}
-            <path d="M 64 30 C 68 55, 74 60, 98 64 C 74 68, 68 74, 64 98 C 60 74, 54 68, 30 64 C 54 60, 60 55, 64 30 Z" fill="white" filter="url(#star_glow)" />
+            {/* Main 4-point Star: Reduced size (Radius approx 22px, previously ~34px) */}
+            <path d="M 64 42 C 66 58, 70 60, 86 64 C 70 68, 66 70, 64 86 C 62 70, 58 68, 42 64 C 58 60, 62 58, 64 42 Z" fill="white" filter="url(#star_glow)" />
             
-            {/* Smaller satellite stars */}
-            <path d="M 96 36 L 98 32 L 100 36 L 104 38 L 100 40 L 98 44 L 96 40 L 92 38 Z" fill="#fcd34d" opacity="0.9" /> {/* Yellow tint */}
-            <path d="M 32 92 L 34 88 L 36 92 L 40 94 L 36 96 L 34 100 L 32 96 L 28 94 Z" fill="#67e8f9" opacity="0.9" /> {/* Cyan tint */}
+            {/* Tiny satellite dots for texture */}
+            <circle cx="84" cy="54" r="1.5" fill="#fcd34d" opacity="0.8" />
+            <circle cx="44" cy="74" r="1" fill="#67e8f9" opacity="0.8" />
         </g>
       </svg>
       
